@@ -27,6 +27,7 @@ export interface CrucibleViewProps {
 }
 
 export function CrucibleView(props: CrucibleViewProps) {
+	//@ts-ignore
 	const theme = useContext(ThemeContext);
 	const styles = themedStyles(theme);   
 	const mintBox = props.mint === 'closed' ? (
@@ -96,7 +97,7 @@ export function CrucibleView(props: CrucibleViewProps) {
 			<div className="crucible-details">
 				<div className="crucible-details-left">
 					<Button
-						disabled={!props.enableMint}
+						disabled={false}
 						className="btn-pri liqaction btn-icon btn-connect mt-4"
 						style={styles.btnCont}
 						onClick={props.onMint}>
@@ -105,7 +106,7 @@ export function CrucibleView(props: CrucibleViewProps) {
 				</div>
 				<div className="crucible-details-right">
 					<Button
-						disabled={!props.enableWithdraw}
+						disabled={false}
 						className="btn-pri liqaction btn-icon btn-connect mt-4"
 						style={styles.btnCont}
 						onClick={props.onWithdraw}>
