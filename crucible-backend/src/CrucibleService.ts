@@ -493,7 +493,13 @@ export class CrucibeService extends MongooseConnection implements Injectable {
 		const [network, ] = EthereumSmartContractHelper.parseCurrency(crucible);
 		const baseCurrency = await this.baseCurrency(crucible);
 		const name = (await (await this.crucible(crucible)).name()).toString();
-		const pairAddress = await this.uniswap.pairAddress(crucible, Networks.for(network).baseCurrency);
+
+		let pairAddress;
+		
+		if (network != "ETHEREUM_ARBITRUM") {
+			pairAddress = await this.uniswap.pairAddress(crucible, Networks.for(network).baseCurrency);
+		}
+
 		console.log('PAIR ADDRESS ISO', pairAddress)
 
 		return {

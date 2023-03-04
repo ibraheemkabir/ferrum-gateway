@@ -51,10 +51,12 @@ export interface GovernanceTransaction extends RegisteredContract {
 	archived: boolean;
 	logs: string[];
 	execution: TransactionTrackable;
+	vetoSignatures: MultiSigSignature[];
 }
 
 export interface QuorumSubscription {
 	quorum: string;
 	groupId: number;
 	minSignatures: number;
+	vetoCount: number
 }

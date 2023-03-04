@@ -18,6 +18,11 @@ export const AsideMenu = (props: { groupId:string }) => {
         title="Quorums"
         prefix={<FaHandshake />}
       />
+       <FSiderItem
+        to={`/safes`}
+        title="Safes"
+        prefix={<FaHandshake />}
+      />
       <FSiderItem
         to={`/groups`}
         title="Groups"

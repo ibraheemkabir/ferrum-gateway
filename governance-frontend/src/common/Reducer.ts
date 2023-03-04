@@ -15,6 +15,7 @@ const defaultQuorum = {
 	quorum: '',
 	groupId: 0,
 	minSignatures: 0,
+	vetoCount: 0
 } as QuorumSubscription;
 
 export function userReducer(state: AppUserState = { quorum: defaultQuorum }, action: AnyAction) {
@@ -32,6 +33,8 @@ function clientReducer(state: AppGlobalState, action: AnyAction) {
 	switch (action.type) {
 		case GovernanceClientActions.CONTRACTS_LOADED:
 			return {...state, contracts: action.payload};
+		case GovernanceClientActions.SAFES_LOADED:
+			return {...state, safes: action.payload};
 		case GovernanceClientActions.CONTRACT_LOADED:
 			return {...state, selectedContract: action.payload};
 		case GovernanceClientActions.TRANSACTIONS_LOADED:
@@ -43,6 +46,7 @@ function clientReducer(state: AppGlobalState, action: AnyAction) {
 
 export function dataReducer(state: AppGlobalState = {
 		contracts: [],
+		safes: [],
 		requests: [],
 		selectedContract: {} as any,
 		waiting: false,

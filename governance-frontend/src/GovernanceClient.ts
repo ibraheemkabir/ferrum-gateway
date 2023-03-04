@@ -11,6 +11,7 @@ import { recoverTypedSignature_v4 } from 'eth-sig-util';
 
 export const GovernanceClientActions = {
 	CONTRACTS_LOADED: 'CONTRACTS_LOADED',
+	SAFES_LOADED: 'SAFES_LOADED',
 	CONTRACT_LOADED: 'CONTRACT_LOADED',
 	TRANSACTIONS_LOADED: 'TRANSACTIONS_LOADED',
 	SUBSCRIPTION_LOADED: 'SUBSCRIPTION_LOADED',
@@ -45,10 +46,28 @@ export class GovernanceClient {
 		}
 	}
 
-	async contractById(dispatch: Dispatch<AnyAction>, id: string) {
+	async listSafes(dispatch: Dispatch<AnyAction>) {
+		try{
+			dispatch(addAction(CommonActions.WAITING,''))
+			const res = await this.api.api({
+				command: 'listSafes',
+				data: {},
+				params: [],
+			} as JsonRpcRequest);
+			if (!!res) {
+				dispatch(addAction(Actions.SAFES_LOADED, res));
+			}
+		}catch(e){
+			console.log(e)
+		}finally{
+			dispatch(addAction(CommonActions.WAITING_DONE,''))
+		}
+	}
+
+	async contractById(dispatch: Dispatch<AnyAction>, id: string, isSafe: boolean) {
 		const res = await this.api.api({
 			command: 'contractById',
-			data: { id },
+			data: { id, isSafe },
 			params: [],
 		} as JsonRpcRequest);
 		if (!!res) {
@@ -57,10 +76,10 @@ export class GovernanceClient {
 	}
 
 	async reloadTransactions(dispatch: Dispatch<AnyAction>,
-			network: string, contractAddress: string) {
+			network: string, contractAddress: string, isSafe: boolean) {
 		const res = await this.api.api({
 			command: 'listTransactions',
-			data: { network, contractAddress },
+			data: { network, contractAddress, isSafe },
 			params: [],
 		} as JsonRpcRequest);
 		if (!!res) {
@@ -69,10 +88,10 @@ export class GovernanceClient {
 	}
 
 	async getSubscription(dispatch: Dispatch<AnyAction>,
-			network: string, contractAddress: string) {
+			network: string, contractAddress: string, isSafe: boolean) {
 		const res = await this.api.api({
 			command: 'getSubscription',
-			data: { network, contractAddress },
+			data: { network, contractAddress, isSafe },
 			params: [],
 		} as JsonRpcRequest);
 		if (!!res) {
@@ -96,6 +115,7 @@ export class GovernanceClient {
 	async submitTransaction(dispatch: Dispatch<AnyAction>,
 			requestId: string,
 			contractAddress: string,
+			isSafe: boolean
 			) {
 		const network = this.api.getNetwork();
 		const txId = await this.api.runServerTransaction(async () => {
@@ -107,25 +127,55 @@ export class GovernanceClient {
 				params: [],
 			} as JsonRpcRequest);
 		})
+		console.log(txId, "TXID")
 		if (!!txId) {
 			return await this.api.api({
 				command: 'updateTransacionsForRequest',
 				data: {
 					requestId,
 					transactionId: txId,
+					network
 				},
 				params: [],
 			} as JsonRpcRequest);
 		}
-		await this.reloadTransactions(dispatch, network, contractAddress);
+		await this.reloadTransactions(dispatch, network, contractAddress, isSafe);
 	}
+
+	async updateTransaction(
+		dispatch: Dispatch<AnyAction>,
+		contractAddress: string,
+		requestId: string,
+		txId: string,
+		isSafe: boolean
+		) {
+	const network = this.api.getNetwork();
+	
+	console.log(txId, "TXID")
+	if (!!txId) {
+		const res = await this.api.api({
+			command: 'updateTransacionsForRequest',
+			data: {
+				requestId,
+				transactionId: txId,
+				network,
+				isSafe
+			},
+			params: [],
+		} as JsonRpcRequest);
+		await this.reloadTransactions(dispatch, network, contractAddress, isSafe);
+		return res;
+	}
+}
 
 	async proposeTransaction(dispatch: Dispatch<AnyAction>,
 			contractAddress: string,
 			governanceContractId: string,
 			method: string,
 			args: string[],
-			signature: string,) {
+			signature: string,
+			isSafe: boolean
+		) {
 		const network = this.api.getNetwork();
 		const res = await this.api.api({
 			command: 'proposeTransaction',
@@ -140,14 +190,16 @@ export class GovernanceClient {
 			params: [],
 		} as JsonRpcRequest);
 		if (!!res) {
-			await this.reloadTransactions(dispatch, network, contractAddress);
+			await this.reloadTransactions(dispatch, network, contractAddress, isSafe);
 		}
 	}
 	
 	async addSignature(dispatch: Dispatch<AnyAction>,
 			requestId: string,
 			contractAddress: string,
-			signature: string,) {
+			signature: string,
+			isSafe: boolean
+		) {
 		const network = this.api.getNetwork();
 		const res = await this.api.api({
 			command: 'addSignature',
@@ -158,7 +210,7 @@ export class GovernanceClient {
 			params: [],
 		} as JsonRpcRequest);
 		if (!!res) {
-			await this.reloadTransactions(dispatch, network, contractAddress);
+			await this.reloadTransactions(dispatch, network, contractAddress, isSafe);
 		}
 	}
 

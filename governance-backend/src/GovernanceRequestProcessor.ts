@@ -12,6 +12,9 @@ export class GovernanceRequestProcessor
     this.registerProcessor("listContracts",
 			(req) => this.svc.listContracts());
 		
+    this.registerProcessor("listSafes",
+			(req) => this.svc.listSafes());
+		
 		this.registerProcessor('contractById',
 			(req) => this.contractById(req));
 
@@ -73,9 +76,9 @@ export class GovernanceRequestProcessor
   }
 
   async addSignature(req: HttpRequestData, userId: string) {
-    const { requestId, signature} = req.data;
+    const { requestId, signature, isSafe} = req.data;
     ValidationUtils.allRequired(['requestId', 'signature'], req.data);
-    return this.svc.addSignature(userId, requestId, signature);
+    return this.svc.addSignature(userId, requestId, signature, isSafe);
   }
 
   async listTransactions(req: HttpRequestData, userId: string) {
@@ -85,9 +88,9 @@ export class GovernanceRequestProcessor
   }
 
   async getSubscription(req: HttpRequestData, userId: string) {
-    const { network, contractAddress } = req.data;
+    const { network, contractAddress, isSafe } = req.data;
     ValidationUtils.allRequired(['network', 'contractAddress'], req.data);
-    return this.svc.getSubscription(network, contractAddress, userId);
+    return this.svc.getSubscription(network, contractAddress, userId, isSafe);
   }
 
   async submitRequestGetTransaction(req: HttpRequestData, userId: string) {
@@ -97,8 +100,8 @@ export class GovernanceRequestProcessor
   }
 
   async updateTransacionsForRequest(req: HttpRequestData, userId: string) {
-    const { requestId, transactionId } = req.data;
+    const { requestId, transactionId, network } = req.data;
     ValidationUtils.allRequired(['requestId'], req.data);
-    return this.svc.updateTransacionsForRequest(requestId, transactionId);
+    return this.svc.updateTransacionsForRequest(requestId, transactionId, network);
   }
 }

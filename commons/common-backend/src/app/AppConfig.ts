@@ -32,7 +32,7 @@ export interface WithKmsConfig {
  */
 export class AppConfig {
     private static _instance: AppConfig;
-    private static DEFAULT_CONSTANTS = 'https://raw.githubusercontent.com/ferrumnet/ferrum-token-list/main/bridge/constants.json';
+    private static DEFAULT_CONSTANTS = 'https://raw.githubusercontent.com/ibraheemkabir/ferrum-token-list/main/bridge/constants.json';
     private static CONFIG_FILE_PREFIX = 'CONFIG_FILE_';
     static instance() {
         if (!AppConfig._instance) {

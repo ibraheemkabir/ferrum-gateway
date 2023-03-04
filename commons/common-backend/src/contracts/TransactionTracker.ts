@@ -4,7 +4,8 @@ import { Schema, Document } from 'mongoose';
 import { TransactionTrackable, TransactionTrackableItem } from 'types';
 
 function isStatusTerminal(status: '' | 'pending' | 'failed' | 'timedout' | 'sucess') {
-	return !(status === 'pending' || !status);
+	console.log(status, 'statusstaus')
+	return !(status === 'pending') || !status;
 }
 
 const transactionTrackableItemSchema = new Schema<TransactionTrackableItem&Document>({
@@ -33,9 +34,13 @@ export class TransactionTracker implements Injectable {
 		network: string,
 		transactionId?: string): Promise<TransactionTrackable|undefined> {
 		const txs: TransactionTrackableItem[] = item.transactions || [];
-		if (transactionId && !txs.find(t => t.transactionId == transactionId)) {
+		const txEntry = await txs.find(t => t.transactionId == transactionId)
+		console.log(txEntry, transactionId, transactionId && !txEntry)
+		if (transactionId && !txEntry) {
+			console.log()
 			return this.insert(item, network, transactionId);
 		}
+		console.log(transactionId, txs, 'allStatusesF')
 
 		const allStatusesF = txs
 			.filter(t => !transactionId || t.transactionId === transactionId)
@@ -44,11 +49,14 @@ export class TransactionTracker implements Injectable {
 				this.helper.getTransactionStatus(network, t.transactionId, t.timestamp)
 				.then(status => ({ t, status }))
 			);
+		console.log(allStatusesF, 'allStatusesF')
 		const allStatuses = await Promise.all(allStatusesF);
 		let changed = {} as any;
 		allStatuses.filter(p => p.t.status !== p.status).forEach(p => {
 			changed[p.t.transactionId] = p.status;
 		});
+		console.log(changed, 'changed')
+
 		if (!Object.keys(changed).length) { return; }
 		item = {...item};
 		item.transactions = txs
@@ -75,6 +83,7 @@ export class TransactionTracker implements Injectable {
 		item = {...item};
 		item.transactions = [...(item.transactions || [])];
 		let status = await this.helper.getTransactionStatus(network, transactionId, now);
+		console.log(status, 'statusstatus', item)
 		if (status === 'timedout') {  // Cannot be timed out. We just submitted
 			status = 'pending';
 		}

@@ -23,6 +23,34 @@ export const GovernanceContractDefinitions: { [k: string]: GovernanceContract } 
 		'TOKEN_DAO:001.000': merge(MultiSig, TokenDao),
 }
 
+export const safesList: RegisteredContract[] = [
+	{
+		network: 'BSC_TESTNET',
+		contractAddress: '0xFf810A9188aeF1D1933Dc9Ec58e4cA4B5C52185F',
+		governanceContractId: 'FERRUM_BASIC_IRON_SAFE:000.001',
+	},
+	{
+		network: 'BSC_TESTNET',
+		contractAddress: '0xA81c69282e449905F6F098AE750f65dc3Cdeb4A8',
+		governanceContractId: 'FERRUM_BASIC_IRON_SAFE:000.001',
+	},
+	{
+		network: 'BSC_TESTNET',
+		contractAddress: '0x6410b87148447D0F1169c77b66062A38F437c1a2',
+		governanceContractId: 'FERRUM_BASIC_IRON_SAFE:000.001',
+	},
+	{
+		network: 'BSC_TESTNET',
+		contractAddress: '0xE9EdA2e24e42018aFF861Cb4587aC418e223c893',
+		governanceContractId: 'FERRUM_BASIC_IRON_SAFE:000.001',
+	},
+	{
+		network: 'BSC_TESTNET',
+		contractAddress: '0x7be0835240429e1A4521420bACadBdAe446Cef7d',
+		governanceContractId: 'FERRUM_BASIC_IRON_SAFE:000.001',
+	}
+]
+
 export const GovernanceContractList: RegisteredContract[] = [
 	{
 		network: 'RINKEBY',
@@ -62,6 +90,16 @@ export const GovernanceContractList: RegisteredContract[] = [
 	{
 		network: 'BSC',
 		contractAddress: '0x830A8E8Eb51639d79b50b24374A4a52541fD7788',
+		governanceContractId: 'FERRUM_CRUCIBLE_ROUTER:000.002',
+	},
+	{
+		network: 'ETHEREUM_ARBITRUM',
+		contractAddress: '0xbB0bf66b5E10cc7da5bBD64344d5d961b1ae4d23',
+		governanceContractId: 'FERRUM_CRUCIBLE_ROUTER:000.002',
+	},
+	{
+		network: 'ETHEREUM_ARBITRUM',
+		contractAddress: '0x9865220A053270e3B007969622562b33645C5412',
 		governanceContractId: 'FERRUM_CRUCIBLE_ROUTER:000.002',
 	},
 	{

@@ -6,7 +6,9 @@ import { GovernanceContract, GovernanceTransaction,
 	MultiSigSignature, SignableMethod, Utils, QuorumSubscription, RegisteredContract } from "types";
 import { CrucibleRouter__factory } from './resources/typechain/factories/CrucibleRouter__factory';
 import { CrucibleRouter } from './resources/typechain/CrucibleRouter';
-import { GovernanceContractDefinitions, GovernanceContractList } from "./contracts/GovernanceContractList";
+import { BasicIronSafe__factory } from './resources/typechain/factories/BasicIronSafe__factory';
+import { BasicIronSafe } from './resources/typechain/BasicIronSafe';
+import { GovernanceContractDefinitions, GovernanceContractList, safesList } from "./contracts/GovernanceContractList";
 import { Eip712Params, multiSigToBytes, produceSignature, verifySignature } from 'web3-tools/dist/Eip712Utils';
 import { randomBytes } from 'ferrum-crypto';
 import { TransactionTrackableSchema, TransactionTracker } from 'common-backend/dist/contracts/TransactionTracker';
@@ -37,6 +39,7 @@ const GovernanceTransactionSchema = new Schema<GovernanceTransaction&Document>({
 	archived: Boolean,
 	logs: [String],
 	execution: TransactionTrackableSchema,
+	vetoSignatures: [Object],
 });
 
 const GovernanceTransactionModel = (c: Connection) => c.model<GovernanceTransaction&Document>('governanceTransactions', GovernanceTransactionSchema);
@@ -78,12 +81,22 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		]
 	}
 
+	async listSafes() {
+		this.verifyInit();
+		const hardCoded = safesList;
+		const fromDb = await this.registeredContract.find({}).exec();
+		return [
+			...hardCoded,
+			...fromDb.map(f => f.toJSON()),
+		]
+	}
+
 	async contractById(id: string) {
 		return GovernanceContractDefinitions[id];
 	}
 
-	async getSubscription(network: string, contractAddress: string, userAddress: string) {
-		return await this.subscription(network, contractAddress, userAddress);
+	async getSubscription(network: string, contractAddress: string, userAddress: string, isSafe: boolean = false) {
+		return await this.subscription(network, contractAddress, userAddress, isSafe);
 	}
 
 	async listTransactions(userAddress: string, network: string, contractAddress: string) {
@@ -93,8 +106,8 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 			return [];
 		}
 		const txs = await this.transactionsModel.find(
-			{ 'quorum': sub.quorum}).exec();
-		console.log('Finding ', { 'quorum': sub.quorum}, txs.length)
+			{ 'quorum': sub.quorum, 'contractAddress': contractAddress }).exec();
+		console.log('Finding ', { 'quorum': sub.quorum }, txs.length)
 		return !!txs ? txs.map(t => t.toJSON()) : undefined;
 	}
 
@@ -105,11 +118,12 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		userAddress: string,
 		requestId: string,
 		signature: string,
+		isSafe: boolean = false
 	) {
 		ValidationUtils.allRequired(['userAddress', 'requestId', 'signature'], {userAddress, requestId, signature});
 		const tx = await this.getGovTransaction(requestId);
 		ValidationUtils.isTrue(!!tx, 'requestId not found: ' + requestId);
-		await this.methodCall(tx.network, tx.contractAddress, tx.governanceContractId, tx.method, [], true, userAddress, signature);
+		await this.methodCall(tx.network, tx.contractAddress, tx.governanceContractId, tx.method, [], true, userAddress, signature, isSafe);
 		await this.transactionsModel.findOneAndUpdate({requestId}, {archived: true});
 		return await this.getGovTransaction(requestId);
 	}
@@ -122,10 +136,17 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		args: string[],
 		userAddress: string,
 		signature: string,
+		isSafe: boolean = false
 	) {
 		this.verifyInit();
-		const [sub, sig] = await this.methodCall(network, contractAddress, governanceContractId, method, args, false, userAddress, signature);
+		const [sub, sig] = await this.methodCall(network, contractAddress, governanceContractId, method, args, false, userAddress, signature, isSafe);
 		const requestId = randomBytes(32);
+		const isVeto = isSafe ? await this.vetoStatus(
+			network,
+			contractAddress,
+			userAddress
+		) : false
+
 		const tx = {
 			requestId,
 			network,
@@ -143,6 +164,11 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 					signature,
 				} as MultiSigSignature
 			],
+			vetoSignatures: isVeto ? [{
+				creationTime: Date.now(),
+				creator: userAddress,
+				signature,
+			} as MultiSigSignature] : [],
 			archived: false,
 			logs: [ `Created by ${userAddress}` ],
 			execution: { status: '', transactions: [] },
@@ -155,30 +181,47 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		userAddress: string,
 		requestId: string,
 		signature: string,
+		isSafe: boolean
 	) {
 		this.verifyInit();
 		const tx = await this.getGovTransaction(requestId);
 		ValidationUtils.isTrue(!!tx, 'requestId not found: ' + requestId);
 		ValidationUtils.isTrue(!tx.signatures.find(s => s.creator.toLowerCase() === userAddress.toLowerCase()), 'Already signed by this user');
 		const [sub, sig] = await this
-			.methodCall(tx.network, tx.contractAddress, tx.governanceContractId, tx.method, tx.values, false, userAddress, signature);
+			.methodCall(tx.network, tx.contractAddress, tx.governanceContractId, tx.method, tx.values, false, userAddress, signature, isSafe);
 		ValidationUtils.isTrue(sub.quorum === tx.quorum, 
 			`Signer is from a different quorum: ${sub.quorum} vs ${tx.quorum}`);
+		
+		const isVeto = await this.vetoStatus(
+			tx.network,
+			tx.contractAddress,
+			userAddress
+		)
+
+		if (isVeto) {
+			tx.vetoSignatures.push({
+				creationTime: Date.now(),
+				creator: userAddress.toLowerCase(),
+				signature,
+			} as MultiSigSignature);
+		}
 		tx.signatures.push({
 			creationTime: Date.now(),
 			creator: userAddress.toLowerCase(),
 			signature,
 		} as MultiSigSignature);
-		await this.transactionsModel.findOneAndUpdate({requestId}, {signatures: tx.signatures});
+		await this.transactionsModel.findOneAndUpdate({requestId}, { signatures: tx.signatures });
 		return await this.getGovTransaction(requestId);
 	}
 
 	async updateTransacionsForRequest(
 		requestId: string,
 		transactionId?: string,
+		network?: string
 	) {
 		const r = await this.getGovTransaction(requestId);
-		const execution = await this.tracker.upsert(r.execution || {} as any, transactionId);
+		const execution = await this.tracker.upsert(r.execution || {} as any, network, transactionId);
+		console.log(execution, r, transactionId, 'execution');
 		if (!!execution) {
 			await this.transactionsModel.findOneAndUpdate({requestId}, {execution});
 		}
@@ -198,6 +241,8 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		const expectedGroupId = quorumData[1];
 		ValidationUtils.isTrue(Utils.isNonzeroAddress(quorumData[0]),
 			`Quorum ${tx.quorum} doesnt exist on ${tx.contractAddress}`);
+
+		tx.signatures.sort((s1, s2) => Buffer.from(s2.creator.replace('0x', ''), 'hex') < Buffer.from(s1.creator.replace('0x', ''), 'hex') ? 1 : -1);
 		const multiSig = multiSigToBytes(tx.signatures.map(s => s.signature));
 		
 		// Custom logic for expectedGroupId and multiSignature?
@@ -255,11 +300,12 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		values: string[],
 		isArchive: boolean,
 		userAddress: string,
-		signature: string): Promise<[QuorumSubscription, Eip712Params]> {
+		signature: string,
+		isSafe: boolean): Promise<[QuorumSubscription, Eip712Params]> {
 		const [contract, m] = await this.getMethod(contractId, method);
 		const sig = this.produceMethodCall(network, contractAddress, contract, m, values, isArchive);
 		const subscription = await this
-			.authorize(network, contractAddress, userAddress, sig.hash, signature, m.governanceOnly);
+			.authorize(network, contractAddress, userAddress, sig.hash, signature, m.governanceOnly, isSafe);
 		return [subscription, sig];
 	}
 
@@ -292,13 +338,13 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		return sig;
 	}
 
-	private async authorize(network: string, contractAddress: string, userAddress: string, msg: string, signature: string, mustBeGov: boolean) {
+	private async authorize(network: string, contractAddress: string, userAddress: string, msg: string, signature: string, mustBeGov: boolean, isSafe: boolean = false) {
 		// First, check if the user signature is valid. Once it is verified, make sure use is allowed on the contract
 		console.log('To autorize', {
 			network, contractAddress, userAddress, msg, signature
 		})
 		verifySignature(msg.replace('0x',''), userAddress, signature);
-		const subscription = await this.subscription(network, contractAddress, userAddress);
+		const subscription = await this.subscription(network, contractAddress, userAddress, isSafe);
 		console.log('Subscription', {subscription});
 		ValidationUtils.isTrue(!!subscription, `Address ${userAddress} is not part of any quorum on ${network} - ${contractAddress}`);
 		if (mustBeGov) {
@@ -317,7 +363,12 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		return [con!, meth!];
 	}
 
-	private async subscription(network: string, contractAddress: string, userAddress: string): Promise<QuorumSubscription | undefined> {
+	private async vetoStatus(network: string, contractAddress: string, userAddress: string) {
+		const isVeto = (await this.safeContract(network, contractAddress).vetoRights(userAddress)) || false;
+		return isVeto;
+	}
+
+	private async subscription(network: string, contractAddress: string, userAddress: string, isSafe: boolean = false): Promise<QuorumSubscription | undefined> {
 		const subscription = (await this.contract(network, contractAddress).quorumSubscriptions(userAddress)) || ['', 0, 0];
 		console.log('first sub is ', Utils.isNonzeroAddress(subscription[0]), subscription[0])
 		if (!subscription || !Utils.isNonzeroAddress(subscription[0])) {
@@ -325,8 +376,10 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 		}
 		const mainQuorum = await this.contract(network, contractAddress).quorums(subscription[0]);
 		const minSignatures = mainQuorum.minSignatures;
+		const vetoRightsLength = isSafe ? (await this.safeContract(network, contractAddress).vetoRightsLength()) || 0 : 0
+
 		const [quorum, groupId, ] = subscription;
-		return { quorum: quorum.toLowerCase(), groupId, minSignatures } as QuorumSubscription;
+		return { quorum: quorum.toLowerCase(), groupId, minSignatures, vetoCount: vetoRightsLength } as QuorumSubscription;
 	}
 
 	private async getGovTransaction(requestId: string): Promise<GovernanceTransaction|undefined> {
@@ -339,6 +392,11 @@ export class GovernanceService extends MongooseConnection implements Injectable 
 	private contract(network: string, contractAddress: string): CrucibleRouter {
 		const provider = this.helper.ethersProvider(network);
 		return CrucibleRouter__factory.connect(contractAddress, provider);
+	}
+
+	private safeContract(network: string, contractAddress: string): BasicIronSafe {
+		const provider = this.helper.ethersProvider(network);
+		return BasicIronSafe__factory.connect(contractAddress, provider);
 	}
 }
 

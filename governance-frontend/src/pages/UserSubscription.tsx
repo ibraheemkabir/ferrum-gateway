@@ -14,7 +14,10 @@ export function UserSubscription() {
 		state => state.data.state.selectedContract);
 	const quorum = useSelector<GovernanceAppState, QuorumSubscription>(
 		state => state.connection.userState.quorum);
-	console.log(quorum,'quorumquorumquorum')
+	
+	const isSafe = contract?.identifier?.name.includes('SAFE');
+	//@ts-ignore
+	const vetoRightsLength = parseInt(quorum?.vetoCount?.hex?.toString(), 16) || 0
 	return (
 		<>
 		<Card title={'Connected Account'} subTitle=''>
@@ -25,6 +28,7 @@ export function UserSubscription() {
 				<h4><div className='title-mini'>Quorum:</div> {quorum.quorum || 'Not registered'}</h4>
 				{/* //<h4><div className='title-mini'>Group ID:</div> {quorum.groupId.hex as any}</h4> */}
 				<h4><div className='title-mini'>Min signatures:</div> {quorum?.minSignatures}</h4>
+				{ isSafe && <h4><div className='title-mini'>Veto rights length:</div>{vetoRightsLength}</h4>}
 			</div>
 		</Card>
 		</>

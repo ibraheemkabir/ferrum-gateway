@@ -8,6 +8,13 @@
     pointer-events: none;
 }
 
+.item-actions {
+    display: flex;
+    margin: 0px 0px 0px auto;
+    gap: 20px;
+    align-items: center;
+}
+
 @media (prefers-reduced-motion: no-preference) {
     .App-logo {
         animation: App-logo-spin infinite 20s linear;
@@ -146,7 +153,8 @@
                 flex-wrap: wrap;
                 width: 90%;
                 margin: 0px auto;
-                
+                row-gap: 1.5rem;
+
                 .contract-item{
                     display: grid;
                     grid-auto-rows: auto;

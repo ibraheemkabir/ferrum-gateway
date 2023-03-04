@@ -10,6 +10,7 @@ import { Route, Switch } from 'react-router';
 import { GovernanceClient } from '../GovernanceClient';
 import { GovernanceAppState } from '../common/GovernanceAppState';
 import { ContractList } from './ContractsList/ContractList';
+import { SafesList } from './SafesList/SafesList';
 import { GovernanceContractPage } from './ContractDetails/GovernanceContractPage';
 import { Method, NewMethod } from './CallMethod/Method';
 import { ThemeProvider } from "styled-components";
@@ -30,6 +31,8 @@ const initializeDashboardThunk = createAsyncThunk('governance/init', async (payl
 	ctx.dispatch(addAction(CommonActions.WAITING,''))
 	const client = inject<GovernanceClient>(GovernanceClient);
 	await client.listContracts(ctx.dispatch);
+	await client.listSafes(ctx.dispatch);
+
 	// Make sure we have user balance for all the crucibles listed
 });
 
@@ -82,6 +85,12 @@ export function Dashboard(props: DashboardProps) {
 											</Route>
 											<Route path="/contract/:network/:contractAddress/:contractId">
 												<GovernanceContractPage />
+											</Route>
+											<Route path="/contract/:network/:contractAddress/:contractId">
+												<GovernanceContractPage />
+											</Route>
+											<Route path="/safes" >
+												<SafesList />
 											</Route>
 											<Route path="/" >
 												<ContractList />

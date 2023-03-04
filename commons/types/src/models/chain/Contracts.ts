@@ -41,6 +41,11 @@ export const CRUCIBLE_CONTRACTS_V_0_1: NetworkedConfig<CrucibleContracts> = {
 		router: '0xfE31f63BCd6Dd0297649Bb384ef2C89149c16A76',
 		staking: '',
 	},
+	'ETHEREUM_ARBITRUM': {
+		factory: '0x6A4c3475edFBC5FCaf93bBf337b52b8D6A14C031',
+		router: '0x9865220A053270e3B007969622562b33645C5412',
+		staking: ''
+	}
 };
 
 export const STAKING_CONTRACTS_V_0_1: NetworkedConfig<StakingContracts[]> = {

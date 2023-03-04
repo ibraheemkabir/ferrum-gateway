@@ -27,6 +27,7 @@ export interface AppUserState {
 
 export interface AppGlobalState extends AppInitializingState {
 	contracts: RegisteredContract[];
+	safes: RegisteredContract[];
 	selectedContract: GovernanceContract;
 	requests: GovernanceTransaction[];
 }

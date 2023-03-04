@@ -7,20 +7,18 @@ import {
 	// @ts-ignore
 } from 'component-library';
 import { useHistory } from 'react-router';
-import { addressForUser } from 'common-containers';
-import './ContractList.css';
+import { addressForUser, ChainEventItem } from 'common-containers';
+import './SafesList.css';
 import { Card } from '../../components/Card';
 import { FButton } from "ferrum-design-system";
 
-export function ContractList() {
+export function SafesList() {
 	const registered = useSelector<GovernanceAppState, RegisteredContract[]>(state => state.data.state.contracts);
+	const safes = useSelector<GovernanceAppState, RegisteredContract[]>(state => state.data.state.safes);
 	const network = useSelector<GovernanceAppState, string>(state => addressForUser(state.connection.account.user)?.network || '');
 	const waiting = useSelector<GovernanceAppState, boolean>(state=> state.data.state.waiting)
 	const history = useHistory();
-	const user = useSelector<GovernanceAppState, any>(state => addressForUser(state.connection.account.user));
-
-	console.log(network, registered, user, 'registeredregistered')
-
+	console.log(safes, network);
 	return (
 		<>
 			<div className='gv-section-title'>
@@ -28,8 +26,8 @@ export function ContractList() {
 			</div>
 			<div className="contracts">
 				{
-					registered.length > 0 ? 
-						registered.map((c, i) => (
+					safes.length > 0 ? 
+						safes.map((c, i) => (
 							<>
 								<Card
 									title={c.governanceContractId}

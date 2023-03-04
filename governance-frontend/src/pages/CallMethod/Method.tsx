@@ -16,14 +16,18 @@ import { GovernanceClient } from '../../GovernanceClient';
 import { Utils } from 'types';
 import { addressForUser } from 'common-containers';
 import { FButton } from "ferrum-design-system";
+import { addAction, CommonActions } from "./../../common/CommonActions";
 
 const addSignature = createAsyncThunk('method/addSignature',
 	async (payload: {method: SignableMethod, contract: GovernanceContract,
-		network:string, contractAddress: string,
+		network:string, contractAddress: string, isSafe: boolean,
 		request: GovernanceTransaction,}, ctx) => {
 		const state = ctx.getState() as GovernanceAppState;
 		const client = inject<GovernanceClient>(GovernanceClient);
 		console.log(payload.contract.identifier.version)
+		ctx.dispatch(
+			addAction(CommonActions.RESET_ERROR, { message: "" })
+		);
 		const signature = await client.signMessage(
 			payload.network, payload.contract.identifier.name,
 			payload.contract.identifier.version, payload.contractAddress, payload.method, 
@@ -31,16 +35,21 @@ const addSignature = createAsyncThunk('method/addSignature',
 		await client.addSignature(ctx.dispatch,
 			payload.request.requestId,
 			payload.contractAddress,
-			signature);
+			signature,
+			payload.isSafe
+		);
 	});
 
 const signAndSave = createAsyncThunk('method/signAndSave',
 	async (payload: {method: SignableMethod, contract: GovernanceContract,
-		network:string, contractAddress: string,}, ctx) => {
+		network:string, contractAddress: string, isSafe: boolean}, ctx) => {
 		const state = ctx.getState() as GovernanceAppState;
 		const client = inject<GovernanceClient>(GovernanceClient);
 		const args = state.ui.newMethod.values;
 		console.log(payload.contract.identifier.version)
+		ctx.dispatch(
+			addAction(CommonActions.RESET_ERROR, { message: "" })
+		);
 		const signature = await client.signMessage(
 			payload.network, payload.contract.identifier.name,
 			payload.contract.identifier.version, payload.contractAddress, payload.method, args);
@@ -49,13 +58,19 @@ const signAndSave = createAsyncThunk('method/signAndSave',
 			payload.contract.id,
 			payload.method.name,
 			args,
-			signature);
+			signature,
+			payload.isSafe
+		);
 	});
 
 const submitTransaction = createAsyncThunk('method/submit',
-	async (payload: { requestId: string, contractAddress: string }, ctx) => {
+	async (payload: { requestId: string, contractAddress: string, isSafe: boolean }, ctx) => {
 		const client = inject<GovernanceClient>(GovernanceClient);
-		await client.submitTransaction(ctx.dispatch, payload.requestId, payload.contractAddress);
+		ctx.dispatch(
+			addAction(CommonActions.RESET_ERROR, { message: "" })
+		);
+		const res = await client.submitTransaction(ctx.dispatch, payload.requestId, payload.contractAddress, payload.isSafe);
+		console.log(res, 'resres')
 	});
 
 export const methodSlice = createSlice({
@@ -75,6 +90,9 @@ export const methodSlice = createSlice({
 		});
 		builder.addCase(submitTransaction.fulfilled, (state, payload) => {
 			state.pending = false;
+		});
+		builder.addCase(CommonActions.RESET_ERROR, (state, payload) => {
+			state.error = '';
 		});
 		builder.addCase(addSignature.pending, (state, payload) => {
 			state.pending = true;
@@ -125,6 +143,9 @@ export const newMethodSlice = createSlice({
 			state.values = [];
 			state.pending = false;
 		});
+		builder.addCase(CommonActions.RESET_ERROR, (state, payload) => {
+			state.error = '';
+		});
 	}
 });
 
@@ -165,6 +186,8 @@ function SignButton(props: {disabled: boolean,
 	const alreadySigned = !!(props.request?.signatures || [] as MultiSigSignature[])
 		.find(s => Utils.addressEqual(s.creator, userAddress!));
 	console.log('ALREADY? ', alreadySigned, {userAddress, cr: props.request.signatures})
+	const isSafe = props.contract?.identifier?.name.includes('SAFE');
+
 	return alreadySigned ? (
 		<>
 		<RegularBtn
@@ -180,7 +203,9 @@ function SignButton(props: {disabled: boolean,
 				contract: props.contract,
 				method: props.method,
 				network: props.network,
-				contractAddress: props.contractAddress}))
+				contractAddress: props.contractAddress,
+				isSafe
+			}))
 			} />
 	);
 }
@@ -201,7 +226,12 @@ export function Method() {
 		(contract?.methods || []).find(m => m.name === request?.method) || {} as any;
 
 	const relevantUser = quorum.quorum === request?.quorum && quorum.minSignatures > 0;
-	const isExecutable = (quorum?.minSignatures >= (request?.signatures?.length || 0));
+	const isExecutable = (quorum?.minSignatures >= (request?.signatures?.length || 0)) || 
+		(request?.signatures?.length || 0) > quorum?.minSignatures
+	;
+	const isSafe = contract?.identifier?.name.includes('SAFE');
+	//@ts-ignore
+	const voteCount = Number(parseInt(quorum?.vetoCount?.hex?.toString(), 16))
 
 	const btn = relevantUser ? (
 		isExecutable ? (
@@ -224,10 +254,14 @@ export function Method() {
 					/>
 
 					<RegularBtn
-						disabled={state.pending}
+						disabled={
+							state.pending 
+							|| (request?.signatures?.length < quorum?.minSignatures)
+							|| ((isSafe && voteCount >= 1) && ((request?.vetoSignatures.length) < 1))
+						}
 						text={'Submit Transaction'}
 						onClick={() => dispatch(submitTransaction({
-							requestId: request?.requestId!, contractAddress}))
+							requestId: request?.requestId!, contractAddress, isSafe}))
 						}
 					/>
 				</>
@@ -246,13 +280,20 @@ export function Method() {
 		<>
 		<small>Address not in the quorum</small>
 		</>);
+	
+	useEffect(() => {
+		dispatch(
+			addAction(CommonActions.RESET_ERROR, { message: "" })
+		);
+	}, [])
+
 	return (
 		<>
 			<div className='gv-section-title'>
 				<h3>{`${contract?.identifier?.name || '....'} Call method `}</h3>
 			</div>
 			<ContractLoader
-				network={network} contractAddress={contractAddress} contractId={contractId}
+				network={network} contractAddress={contractAddress} contractId={contractId} isSafe={isSafe}
 			/>
 			<div className="contracts">
 				<Card title={method?.name || '...'} subTitle={''}>
@@ -260,6 +301,7 @@ export function Method() {
 						<MethodArgs method={method} request={request} disabled={true} />
 						<p> Signature Quorum: <b>{request?.quorum || ''}</b> </p>
 						<p> Signatures: <b>{request?.signatures?.length} of {quorum?.minSignatures || 0}</b> </p>
+						{ (isSafe && voteCount >= 1) && <p> Veto Signatures <b>  {request?.vetoSignatures.length} of {1} required provided. </b> </p> }
 						{state.error && <p>{state.error}</p>}
 						{btn}
 					</div>
@@ -279,13 +321,20 @@ export function NewMethod() {
 
 	const methods = (contract?.methods || []).map(m => ({key: m.name, text: m.name}));
 	const method = ((contract?.methods || [])[state.methodIdx] || {});
+	const isSafe = contract?.identifier?.name.includes('SAFE');
+
+	useEffect(() => {
+		dispatch(
+			addAction(CommonActions.RESET_ERROR, { message: "" })
+		);
+	}, [])
 	return (
 		<>
 		<div className='gv-section-title'>
 			<h3>{'Call Contract Method'}</h3>
 		</div>
 		<ContractLoader
-			network={network} contractAddress={contractAddress} contractId={contractId}
+			network={network} contractAddress={contractAddress} contractId={contractId} isSafe={isSafe}
 		/>
 		<div className="contracts">
 			<Card title={'New method'} subTitle={''}>
@@ -309,7 +358,7 @@ export function NewMethod() {
 						disabled={!!state.error || state.pending}
 						title={'Sign and Save'}
 						onClick={() => dispatch(
-								signAndSave({method, contract, network, contractAddress}))
+								signAndSave({method, contract, network, contractAddress, isSafe}))
 							} />
 					</div>
 				</div>
