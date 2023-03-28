@@ -241,14 +241,23 @@ export class TokenBridgeContractClinet implements Injectable {
     async swap(userAddress: string, currency: string, amount: string, targetCurrency: string) {
         const [network, token] = Helper.parseCurrency(currency);
         const [targetNetwork, targetToken] = Helper.parseCurrency(targetCurrency);
-        const targetNetworkInt = Networks.for(targetNetwork).chainId;
+        let parsedTargetToken = targetToken;
+        let targetNetworkInt;
+        if (targetNetwork == 'CSPR') {
+            parsedTargetToken = `0x${targetToken.slice(0, 40)}`;
+            targetNetworkInt = 109090
+        } else {
+            targetNetworkInt = Networks.for(targetNetwork).chainId;
+            Networks.for(targetNetwork).chainId;
+            ValidationUtils.isTrue(!!targetNetworkInt, `'targetNetwork' must be provided for ${targetNetwork}`);
+        }
         ValidationUtils.isTrue(!!targetNetworkInt, `'targetNetwork' must be provided for ${targetNetwork}`);
         ValidationUtils.isTrue(!!userAddress, "'userAddress' must be provided");
         ValidationUtils.isTrue(!!amount, "'amount' must be provided");
-        console.log('About to call swap', {token,  targetNetworkInt, targetToken});
+        console.log('About to call swap', {token,  targetNetworkInt, parsedTargetToken});
         const amountRaw = await this.helper.amountToMachine(currency, amount);
-        console.log('About to call swap', {token, amountRaw, targetNetworkInt, targetToken});
-        const p = this.instance(network).methods.swap(token, amountRaw, targetNetworkInt, targetToken);
+        console.log('About to call swap', {token, amountRaw, targetNetworkInt, parsedTargetToken});
+        const p = this.instance(network).methods.swap(token, amountRaw, targetNetworkInt, parsedTargetToken);
         const gas = await this.estimateGasOrDefault(p, userAddress, undefined);
         const nonce = await this.helper.web3(network).getTransactionCount(userAddress, 'pending');
         const address = this.contractAddress[network];

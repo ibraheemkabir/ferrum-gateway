@@ -253,6 +253,7 @@ export class TokenBridgeService
     amount: string,
     targetCurrency: string
   ) {
+    console.log(userAddress, currency, amount, targetCurrency)
     const requests = await this.contract.approveIfRequired(
       userAddress,
       currency,
@@ -263,6 +264,7 @@ export class TokenBridgeService
     }
     const [network, token] =
       EthereumSmartContractHelper.parseCurrency(currency);
+    console.log(network, token)
     const userBalance = await this.helper
       .erc20(network, token)
       .methods.balanceOf(userAddress)
@@ -548,6 +550,25 @@ export class TokenBridgeService
       return r.toJSON();
     }
     return;
+  }
+
+  async logEvmAndNonEvmTransaction(
+    item: UserBridgeWithdrawableBalanceItem
+  ): Promise<void> {
+    this.verifyInit();
+    await new this.balanceItem!(item).save();  
+  }
+
+  async updateEvmAndNonEvmTransaction(
+    item: UserBridgeWithdrawableBalanceItem
+  ): Promise<UserBridgeWithdrawableBalanceItem> {
+    this.verifyInit();
+    const res = await this.balanceItem!.findOneAndUpdate(
+      { id: item.id },
+      { $set: { ...item } }
+    );
+    ValidationUtils.isTrue(!!res, "Could not update the balance item");
+    return item;
   }
 
   async close() {
