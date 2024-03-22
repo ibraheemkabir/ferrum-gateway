@@ -96,7 +96,6 @@ export class HttpHandler implements LambdaHttpHandler {
           body = await this.getContractAllocation(req);
           break;
         case "approveAllocationGetTransaction":
-          ValidationUtils.isTrue(!!userId, "User must be signed in");
           body = await this.approveAllocationGetTransaction(req);
           break;
         case "tokenList":

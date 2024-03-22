@@ -46,12 +46,14 @@ export const doGetApproval = createAsyncThunk('approveButton/doGetApproval',
 });
 
 export const doApprove = createAsyncThunk('approveButton/doApprove',
-    async (payload: {userAddress: string, contractAddress: string, currency: string}, ctx) => {
+    async (payload: {userAddress: string, contractAddress: string, currency: string, amount: string}, ctx) => {
 		console.log('CTAX', ctx, 'pay', payload, 'AND API')
-	const {userAddress, contractAddress, currency} = payload;
-	const api = inject<ApiClient>(ApiClient);
+	const {userAddress, contractAddress, currency, amount} = payload;
+	let api = inject<ApiClient>(ApiClient);
+	api = inject<ApiClient>(ApiClient);
+
 	console.log('API IS', api)
-	const transactionId = await api.setContractAllocation(userAddress, contractAddress, currency);
+	const transactionId = await api.setContractAllocation(userAddress, contractAddress, currency, amount);
 	if (!!transactionId) {
 		ctx.dispatch(approvableButtonSlice.actions.approveTransactionReceived({transactionId}));
 	}

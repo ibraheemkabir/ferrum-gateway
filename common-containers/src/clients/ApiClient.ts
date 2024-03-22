@@ -83,16 +83,16 @@ export class ApiClient implements Injectable {
 
 	async setContractAllocation(userAddress: string, contractAddress: string, currency: string, amount?: string)
 	: Promise<string> {
-		const requests = await this.api({
+		const requests = await this.api2({
 			command: 'approveAllocationGetTransaction',
 			data: {currency, amount: amount || '1', userAddress, contractAddress}, params: [] } as JsonRpcRequest);
 		console.log('REQ ISO ', requests)
 		ValidationUtils.isTrue(!!requests && !!requests.length, 'Error calling approve. No requests');
 		console.log('About to submit request', {requests});
 		const res = await this.networkOverrides(requests, '');
-        const requestId = await this.sendTransactionAsync( res, {currency, amount, userAddress, contractAddress})
-		// const requestId = await this.client.sendTransactionAsync(this.network! as any, res,
-		// 	{currency, amount, userAddress, contractAddress});
+        // const requestId = await this.sendTransactionAsync( res, {currency, amount, userAddress, contractAddress})
+		const requestId = await this.client.sendTransactionAsync(this.network! as any, res,
+			{currency, amount, userAddress, contractAddress});
 
 		ValidationUtils.isTrue(!!requestId, 'Could not submit transaction.');
         if (!requestId) return ''
@@ -146,6 +146,34 @@ export class ApiClient implements Injectable {
 					throw e;
 			}
 	}
+
+    async api2(req: JsonRpcRequest): Promise<any> {
+        try {
+                const res = await fetch('https://r9eqcynmt2.execute-api.us-east-2.amazonaws.com/default/crucible-backend-arbitrum-staging', {
+                        method: 'POST',
+                        mode: 'cors',
+                        body: JSON.stringify(req),
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                });
+                const resText = await res.text();
+                if (Math.round(res.status / 100) === 2) {
+                        return resText ? JSON.parse(resText) : undefined;
+                }
+                const error = resText;
+                let jerror: any;
+                try {
+                        jerror = JSON.parse(error);
+                } catch (e) { }
+                logError('Server returned an error when calling ' + req + JSON.stringify({
+                        status: res.status, statusText: res.statusText, error}), new Error());
+                throw new Error(jerror?.error ? jerror.error : error);
+        } catch (e) {
+                logError('Error calling api with ' + JSON.stringify(req), (e as Error));
+                throw e;
+        }
+    }
 
 	private getGasFees = async (network: number) => {
         const response = await fetch(`https://api-gateway-v1.stage.svcs.ferrumnetwork.io/api/v1/gasFees/${network}`)

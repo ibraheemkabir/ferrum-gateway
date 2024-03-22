@@ -31,9 +31,13 @@ export class CommonTokenServices implements Injectable {
 		amount: string):
 	Promise<CustomTransactionCallRequest[]> {
 		console.log('ABOUT TO APPROVE ', {currency, userAddress, amount, contractAddress})
-		const [nonce, tx] = await this.helper.approveMaxRequests(
+		const [nonce, tx] = !amount ? await this.helper.approveMaxRequests(
 			currency, userAddress,
-			amount, contractAddress, 'the given contract');
+			amount, contractAddress, 'the given contract')
+		: await this.helper.approveRequests(
+			currency, userAddress,
+			amount, contractAddress, 'the given contract')
+
 		return tx;
 	}
 
