@@ -50,11 +50,6 @@ const initializeDashboardThunk = createAsyncThunk('crucible/init', async (payloa
 	const connectedAddr = addressForUser(state.connection.account?.user);
 	const network = connectedAddr?.network;
 	
-	const allCrucibles = await client.getAllCruciblesFromDb(ctx.dispatch, network || ''); // If not connected will return result for all networks
-	// Make sure we have user balance for all the crucibles listed
-	const curs = curList.get();
-	curList.set([...curs, ...allCrucibles!?.map(c => c.currency).filter(cur => curs.indexOf(cur) < 0)]);
-
 	if (payload.connected) { // Connection is already completed
 		const userProfile = await web3Client.getUserProfile();
 		ctx.dispatch(connectSlice.actions.connectionSucceeded({userProfile}));

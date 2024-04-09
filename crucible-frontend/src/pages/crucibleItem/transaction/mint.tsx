@@ -6,7 +6,7 @@ import { CrucibleInfo,UserCrucibleInfo, Utils,BigUtils,inject,ChainEventBase,Cru
 import { useHistory, useParams } from 'react-router';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { CrucibleClient, CrucibleClientActions } from '../../../common/CrucibleClient';
-import { ApiClient } from 'common-containers';
+import { ApiClient, addressForUser } from 'common-containers';
 import {crucibleBoxSlice} from './../../crucibleLgcy/CrucibleBox';
 import { addAction, APPLICATION_NAME,CommonActions } from '../../../common/CommonActions';
 import { transactionListSlice } from 'common-containers/dist/chain/TransactionList';
@@ -39,10 +39,12 @@ const doDeposit = createAsyncThunk('crucibleBox/doDeposit',
         ValidationUtils.isTrue(!((Number(payload.balance)-Number(amount)) < 0),'Not Enough Balance Available in Base Token for this transaction');
         let staking = payload.type === "mintAndStake"
         let transactionId
+        const state = ctx.getState() as CrucibleAppState;
+        const connectedAddr = addressForUser(state.connection.account?.user);
         if(staking && stake){
             transactionId = await client.depositAndStake(ctx.dispatch, currency, crucible,stake, amount, isPublic);
         }else{
-            transactionId = await client.deposit(ctx.dispatch, currency, crucible, amount, isPublic);
+            transactionId = await client.deposit(ctx.dispatch, currency, crucible, amount, connectedAddr?.address || '', isPublic);
         }
         if (!!transactionId) {
             ctx.dispatch(crucibleBoxSlice.actions.registerTx({

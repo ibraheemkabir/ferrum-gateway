@@ -7,7 +7,7 @@ import { CrucibleInfo, Utils,UserCrucibleInfo,BigUtils,inject,ChainEventBase,Cru
 import { useHistory, useParams } from 'react-router';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { CrucibleClient, CrucibleClientActions } from '../../../common/CrucibleClient';
-import { ApiClient } from 'common-containers';
+import { ApiClient, addressForUser } from 'common-containers';
 import {crucibleBoxSlice} from './../../crucibleLgcy/CrucibleBox';
 import { APPLICATION_NAME,addAction,CommonActions } from '../../../common/CommonActions';
 import { transactionListSlice } from 'common-containers/dist/chain/TransactionList';
@@ -34,7 +34,9 @@ const doWithdraw = createAsyncThunk('crucibleBox/doWithdraw',
         const {network, currency, crucible, amount} = payload;
         const client = inject<CrucibleClient>(CrucibleClient);
         ValidationUtils.isTrue(((Number(payload.balance)-Number(amount)) > 0.1),'Not Enough Crucible Token Balance Available for this transaction');
-        const transactionId = await client.withdraw(ctx.dispatch,currency, crucible, amount);
+        const state = ctx.getState() as CrucibleAppState;
+        const connectedAddr = addressForUser(state.connection.account?.user);
+        const transactionId = await client.withdraw(ctx.dispatch,currency, crucible, amount, connectedAddr?.address || '');
         if (!!transactionId) {
             ctx.dispatch(TxModal.toggleModal({mode:'submitted',show: true}))
             ctx.dispatch(crucibleBoxSlice.actions.registerTx({transactionId,network }));

@@ -14,6 +14,8 @@ import { ConnectButtonWapper } from 'common-containers';
 import { addAction, CommonActions } from '../../common/CommonActions';
 import { transactionListSlice } from 'common-containers/dist/chain/TransactionList';
 import { APPLICATION_NAME } from '../../common/CommonActions';
+import { CrucibleService } from '../../contractSync/service/crucibleService';
+import { CRUCIBLE_CONTRACTS_V_0_1, PROVIDERS, STAKING_CONTRACTS_V_0_1 } from '../../contractSync/utils/contracts';
 
 // fee is in ratios
 interface DeployProps extends DeployState {
@@ -58,6 +60,30 @@ const launchCrucible = createAsyncThunk('crucible/launch', async (payload: { pro
 		return
 	}
 });
+
+const launchCrucibleSvc = createAsyncThunk('crucible/launch', async (payload: { props: DeployProps }, ctx) => {
+	const { props } = payload;
+	const crucibleSvc = new CrucibleService( PROVIDERS,
+		{
+			"stakingContracts": STAKING_CONTRACTS_V_0_1,
+			"contracts": CRUCIBLE_CONTRACTS_V_0_1
+		}
+	)
+
+	const state = ctx.getState() as CrucibleAppState;
+	const connectedAddr = addressForUser(state.connection.account?.user);
+
+	const cruc = await crucibleSvc.deployGetTransaction(
+		connectedAddr?.address || '',
+		`${props.network}:${props.baseToken.toLowerCase()}`,
+		(Number(props.feeOnTransfer)/100).toString(),
+		(Number(props.feeOnWithdraw)/100).toString(),
+		'',
+		'',
+	)
+	console.log(cruc)
+	return
+})
 
 export const deploySlice = createSlice({
 	name: 'crucible/deploy',
@@ -168,7 +194,7 @@ export function Deploy() {
 								disabled={!props.network || !props.feeOnWithdraw || !props.feeOnTransfer || !props.baseToken}
 								className={'cr-large-btn'}
 								title={`${ !props.network ? 'Connect Wallet to Deploy' : 'Deploy Crucible 🚀'}`}
-								onClick={() => dispatch(launchCrucible({props}))}
+								onClick={() => dispatch(launchCrucibleSvc({props}))}
 							/>
 					}
 				</Row>

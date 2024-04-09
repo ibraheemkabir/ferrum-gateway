@@ -2,9 +2,11 @@ import { JsonRpcRequest, ValidationUtils, Network } from 'ferrum-plumbing';
 import { ApiClient } from "common-containers";
 import { AnyAction, Dispatch } from '@reduxjs/toolkit';
 import { addAction, CommonActions } from './CommonActions';
-import { CrucibleInfo, CRUCIBLE_CONTRACTS_V_0_1, Utils } from 'types';
+import { CrucibleInfo, CRUCIBLE_CONTRACTS_V_0_1, Utils, STAKING_CONTRACTS_V_0_1 } from 'types';
 import { Actions as TxModal } from './transactionModal';
 import { useContextSelector } from '@fluentui/react-northstar';
+import { CrucibleService } from '../contractSync/service/crucibleService';
+import { PROVIDERS } from '../contractSync/utils/contracts';
 
 export const CrucibleClientActions = {
 	CRUCIBLES_LOADED: 'CRUCIBLES_LOADED',
@@ -62,16 +64,28 @@ export class CrucibleClient {
 		crucible: string) {
 		try {
 			dispatch(addAction(CommonActions.WAITING, {}));
-			const userCrucibleInfo = await this.api.api({
-				command: 'getUserCrucibleInfo',
-				data: {crucible, userAddress: this.api.getAddress()},
-				params: [],
-			} as JsonRpcRequest);
+			const instance = new CrucibleService(
+				PROVIDERS,
+				{
+					"stakingContracts": STAKING_CONTRACTS_V_0_1,
+					"contracts": CRUCIBLE_CONTRACTS_V_0_1
+				}
+			)
+			const userCrucibleInfo = await instance.getUserCrucibleInfo(
+				crucible, 
+				this.api.getAddress()
+			)
+			// const userCrucibleInfo = await this.api.api({
+			// 	command: 'getUserCrucibleInfo',
+			// 	data: {crucible, userAddress: this.api.getAddress()},
+			// 	params: [],
+			// } as JsonRpcRequest);
 			if (!!userCrucibleInfo) {
 				await dispatch(addAction(Actions.USER_CRUCIBLE_LOADED, {userCrucibleInfo}));
 			}
 			return userCrucibleInfo;
 		} catch (e) {
+			console.log(e)
 			if((e as Error).message.includes('call revert exception')){
 				dispatch(addAction(CommonActions.ERROR_OCCURED, {message:  'An Error Occured Fetching Crucible Data, Kindly Reconfirm Crucible Contract in Url Or Contact An Admin' || '' }));
 				return
@@ -102,11 +116,20 @@ export class CrucibleClient {
 	}
 
 	async updateCrucible(dispatch: Dispatch<AnyAction>, network: string, contractAddress: string) {
-		const crucible = await this.api.api({
-			command: 'getCrucible',
-			data: {crucible: `${network.toUpperCase()}:${contractAddress}`},
-			params: [],
-		} as JsonRpcRequest);
+		const instance = new CrucibleService(
+			PROVIDERS,
+			{
+				"stakingContracts": STAKING_CONTRACTS_V_0_1,
+				"contracts": CRUCIBLE_CONTRACTS_V_0_1
+			}
+		)
+		const crucible = await instance.getCrucible(`${network.toUpperCase()}:${contractAddress}`)
+		console.log(crucible, ' here')
+		//  await this.api.api({
+		// 	command: 'getCrucible',
+		// 	data: {crucible: `${network.toUpperCase()}:${contractAddress}`},
+		// 	params: [],
+		// } as JsonRpcRequest);
 		if (!!crucible) {
 			dispatch(addAction(Actions.CRUCIBLE_LOADED, {crucible}));
 		}
@@ -134,26 +157,41 @@ export class CrucibleClient {
 		currency: string,
 		crucible: string,
 		amount: string,
+		address: string,
 		isPublic: boolean,
 		) {
 		try {
-			const res = await this.api.runServerTransaction(
-				async () => {
-					const network = this.api.getNetwork();
-					const req =  await this.api.api({
-							command: isPublic ? 'depositPublicGetTransaction' : 'depositGetTransaction',
-							data: {network, currency, crucible, amount}, params: [] } as JsonRpcRequest);
-					console.log(req,'reqreqree')
-					if(!!req){
-						dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
-						return req
-					}
-				});
+			const instance = new CrucibleService(
+				PROVIDERS,
+				{
+					"stakingContracts": STAKING_CONTRACTS_V_0_1,
+					"contracts": CRUCIBLE_CONTRACTS_V_0_1
+				}
+			)
+			const tx = await instance.depositPublicGetTransaction(
+					currency,
+					crucible,
+					amount,
+					address
+				)
+				// this.api.api({
+				// 		command: isPublic ? 'depositPublicGetTransaction' : 'depositGetTransaction',
+				// 		data: {network, currency, crucible, amount}, params: [] } as JsonRpcRequest);
+			console.log(tx,'reqreqree')
+			if(!!tx){
+				dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
+				
+				const res = await instance.sendTransactionAsync([tx], {});
 				if(!!res){
 					dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
 					return res
 				}
+
+
 				return res
+			}
+
+		
 		} catch (e) {
 			console.error('deposit', e);
 			//@ts-ignore
@@ -208,24 +246,52 @@ export class CrucibleClient {
 		crucible: string,
 		amount: string,
 		stake: string,
+		address: string,
 		) {
 		try {
-			const res = await this.api.runServerTransaction(
-				async () => {
-					const network = this.api.getNetwork();
-					const req =  await this.api.api({
-							command: 'stakeForGetTransaction',
-							data: {network, currency: `${network}:${crucible}`, stake, amount}, params: [] } as JsonRpcRequest);
-					if(!!req){
-						dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
-						return req
-					}
-				});
+			const instance = new CrucibleService(
+				PROVIDERS,
+				{
+					"stakingContracts": STAKING_CONTRACTS_V_0_1,
+					"contracts": CRUCIBLE_CONTRACTS_V_0_1
+				}
+			)
+			const [network,] = Utils.parseCurrency(currency);
+			const tx = await instance.StakeTransaction(
+				`${network.toUpperCase()}:${crucible}`,
+				amount,
+				stake,
+				address
+			)
+			console.log(tx,'reqreqree')
+			if(!!tx){
+				dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
+				
+				const res = await instance.sendTransactionAsync([tx], {});
 				if(!!res){
 					dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
 					return res
 				}
+
+
 				return res
+			}
+			// const res = await this.api.runServerTransaction(
+			// 	async () => {
+			// 		const network = this.api.getNetwork();
+			// 		const req =  await this.api.api({
+			// 				command: 'stakeForGetTransaction',
+			// 				data: {network, currency: `${network}:${crucible}`, stake, amount}, params: [] } as JsonRpcRequest);
+			// 		if(!!req){
+			// 			dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
+			// 			return req
+			// 		}
+			// 	});
+			// 	if(!!res){
+			// 		dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
+			// 		return res
+			// 	}
+			// 	return res
 		} catch (e) {
 			console.error('deposit', e);
 			//@ts-ignore
@@ -242,25 +308,37 @@ export class CrucibleClient {
 		currency: string,
 		crucible: string,
 		amount: string,
+		from: string
 		) {
 		try {
-			const res = await this.api.runServerTransaction(
-				async () => {
-					const network = this.api.getNetwork();
-					const req = await this.api.api({
-							command: 'withdrawGetTransaction',
-							data: {network, currency, crucible, amount}, params: [] } as JsonRpcRequest);
-					if(!!req){
-						dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
-						return req
-					}
+			const instance = new CrucibleService(
+				PROVIDERS,
+				{
+					"stakingContracts": STAKING_CONTRACTS_V_0_1,
+					"contracts": CRUCIBLE_CONTRACTS_V_0_1
 				}
 			)
-			if(!!res){
-				console.log(res)
-				dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
+			const tx = await instance.WithdrawTransaction(
+				crucible,
+				amount,
+				from
+			)
+			// const req = await this.api.api({
+			// 	command: 'withdrawGetTransaction',
+			// 	data: {network, currency, crucible, amount}, params: [] } as JsonRpcRequest);
+			console.log(tx,'reqreqree')
+			if(!!tx){
+				dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
+				
+				const res = await instance.sendTransactionAsync([tx], {});
+				if(!!res){
+					dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
+					return res
+				}
+
+
+				return res
 			}
-			return res
 		} catch (e) {
 			console.error('deposit', e);
 			//@ts-ignore
@@ -274,24 +352,51 @@ export class CrucibleClient {
 	}
 
 	async stakeFor(dispatch: Dispatch<AnyAction>,
-			stakeId: string, currency: string, amount: string) {
+			stakeId: string, currency: string, amount: string, address: string) {
 		try {
-			const res =  await this.api.runServerTransaction(async () => {
-				const [network,] = Utils.parseCurrency(currency);
-				const res = await this.api.api(
-				{ command: 'stakeForGetTransaction', params: [], data: {
-					currency,
-					stake: (await this.contract(network)).staking,
-					amount,
-				}});
-				console.log('PRE RES', res)
-				return res;
-			});
-			if(!!res){
-				dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
+			const instance = new CrucibleService(
+				PROVIDERS,
+				{
+					"stakingContracts": STAKING_CONTRACTS_V_0_1,
+					"contracts": CRUCIBLE_CONTRACTS_V_0_1
+				}
+			)
+			const [network,] = Utils.parseCurrency(currency);
+			const tx = await instance.StakeTransaction(
+				currency,
+				amount,
+				(await this.contract(network)).staking,
+				address
+			)
+			console.log(tx,'reqreqree')
+			if(!!tx){
+				dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
+				
+				const res = await instance.sendTransactionAsync([tx], {});
+				if(!!res){
+					dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
+					return res
+				}
+
+
 				return res
 			}
-			return res
+			// const res =  await this.api.runServerTransaction(async () => {
+			// 	const [network,] = Utils.parseCurrency(currency);
+			// 	const res = await this.api.api(
+			// 	{ command: 'stakeForGetTransaction', params: [], data: {
+			// 		currency,
+			// 		stake: (await this.contract(network)).staking,
+			// 		amount,
+			// 	}});
+			// 	console.log('PRE RES', res)
+			// 	return res;
+			// });
+			// if(!!res){
+			// 	dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
+			// 	return res
+			// }
+			// return res
 		} catch (e) {			
 			console.log(e,(e as Error).message)
 			//@ts-ignore

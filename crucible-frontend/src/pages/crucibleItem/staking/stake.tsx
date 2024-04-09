@@ -6,7 +6,7 @@ import { CrucibleInfo,UserCrucibleInfo, Utils,BigUtils,inject,ChainEventBase,Cru
 import { useHistory, useParams } from 'react-router';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { CrucibleClient, CrucibleClientActions } from '../../../common/CrucibleClient';
-import { ApiClient } from 'common-containers';
+import { ApiClient, addressForUser } from 'common-containers';
 import {crucibleBoxSlice} from './../../crucibleLgcy/CrucibleBox';
 import { addAction, APPLICATION_NAME,CommonActions } from '../../../common/CommonActions';
 import { transactionListSlice } from 'common-containers/dist/chain/TransactionList';
@@ -36,8 +36,10 @@ const doStake = createAsyncThunk('crucibleBox/doStake',
         console.log('PL":', payload,)
         const client = inject<CrucibleClient>(CrucibleClient);
         const api = inject<ApiClient>(ApiClient);
+        const state = ctx.getState() as CrucibleAppState;
+        const connectedAddr = addressForUser(state.connection.account?.user);
         ValidationUtils.isTrue(!((Number(payload.balance)-Number(amount)) < 0),'Not Enough Balance Available in Crucible Token for this transaction');
-        let transactionId = await client.stakeCrucible(ctx.dispatch, currency, crucible, amount, stakingAddress);
+        let transactionId = await client.stakeCrucible(ctx.dispatch, currency, crucible, amount, stakingAddress, connectedAddr?.address || '');
         if (!!transactionId) {
             ctx.dispatch(crucibleBoxSlice.actions.registerTx({
                 transactionId,
@@ -145,7 +147,7 @@ export function StakeCrucible(){
 
                     :
                         <ApprovableButton
-                            disabled={!depositOpen||Number(amount)<=0||transactionStatus==='waiting'}
+                            disabled={Number(amount)<=0||transactionStatus==='waiting'}
                             text={`${transactionStatus==='waiting' ? 'Processing' : 'Stake Crucible🍯'}`}
                             contractAddress={CRUCIBLE_CONTRACTS_V_0_1[crucible?.network||''].router}
                             amount={'1'}
