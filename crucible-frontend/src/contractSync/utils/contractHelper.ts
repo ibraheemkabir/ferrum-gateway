@@ -1,5 +1,6 @@
 import { ERC20__factory } from "../typechain";
 import Big from 'big.js';
+import { CustomTransactionCallRequest } from "../types/Contract";
 
 export class ContractHelper {
     __name__() { return 'ContractHelper'; }
@@ -28,6 +29,21 @@ export class ContractHelper {
             return address;
         }
     }
+
+    public static callRequest(contract: string, currency: string, from: string, data: string, gasLimit: string, nonce: number,
+        description: string): CustomTransactionCallRequest {
+        return {
+            currency,
+            from,
+            amount: '0',
+            contract,
+            data,
+            gas: { gasPrice: '0', gasLimit },
+            nonce,
+            description,
+        };
+    }
+
 
 
     public static parseCurrency (currency: string): [string, string] {

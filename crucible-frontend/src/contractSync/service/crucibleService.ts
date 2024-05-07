@@ -1,10 +1,12 @@
-import { BigUtils } from "types";
-import { CrucibleFactory, CrucibleFactory__factory, CrucibleRouter, CrucibleRouter__factory, CrucibleToken, CrucibleToken__factory, ERC20__factory, StakeOpen, StakeOpen__factory } from "../typechain";
+import { BigUtils, UserContractAllocation } from "types";
+import { CrucibleFactory, CrucibleFactory__factory, CrucibleRouter, CrucibleRouter__factory, ERC20Burnable__factory, ERC20, CrucibleToken, CrucibleToken__factory, ERC20__factory, StakeOpen, StakeOpen__factory } from "../typechain";
 import { CrucibleConfig, CustomTransactionCallRequest, Web3ProviderConfig } from "../types/Contract";
 import { STAKING_CONTRACTS_V_0_1, ethersProvider, fromTypechainTransaction, fromTypechainTransactionWithGas, parseCurrency } from "../utils/contracts";
-import { ethers, PopulatedTransaction } from 'ethers';
+import { Big } from 'big.js';
 import Web3 from 'web3';
 import { ContractHelper } from "../utils/contractHelper";
+import { ValidationUtils } from "ferrum-plumbing";
+const MAX_AMOUNT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 
 export class CrucibleService {
     ROUTER_NAME = 'FERRUM_CRUCIBLE_ROUTER';
@@ -21,10 +23,10 @@ export class CrucibleService {
 		return (this._web3(network) || {} as any).eth;
     }
 
-    async getCrucible(crucibleCurrency: string) {
+    async getCrucible(crucibleCurrency: string, staking?: string) {
         try {
             const [network, address] = ContractHelper.parseCurrency(crucibleCurrency);
-            const crucible = await this.getCrucibleInfo(crucibleCurrency, address)
+            const crucible = await this.getCrucibleInfo(crucibleCurrency, address, staking)
             return crucible
         } catch (error) {
             console.log(error)
@@ -32,7 +34,7 @@ export class CrucibleService {
 	
 	}
 
-    async getUserCrucibleInfo(crucible: string, userAddress: string) {
+    async getUserCrucibleInfo(crucible: string, userAddress: string, staking?: string) {
 		const baseCurrency = await this.baseCurrency(crucible);
 		const cru = await this.crucible(crucible);
 		const base = await this.crucible(baseCurrency);
@@ -41,21 +43,32 @@ export class CrucibleService {
 		const allocations: any[] = [];
 		const [network, contractAddress] = ContractHelper.parseCurrency(crucible);
 		const stakingConfigured = STAKING_CONTRACTS_V_0_1;
-		const stakes = []
+		const stakes: any[] = []
         const currency = await this.baseCurrency(crucible);
         const decimal = await this.decimals(currency)
-		if(stakingConfigured[network]){
-			for(let stakingContract of stakingConfigured[network]){
-				const stakingType = await this.stakingConfigured(stakingContract.address || '',network,contractAddress)
-				if(Number(stakingType[0]||'0') > 0 && stakingContract.address){
-					const totalStake = await this.stakingTotal(stakingContract.address, network,contractAddress, decimal)
-					const stakeOf = await this.stakingOf(stakingContract.address, network,contractAddress,userAddress, decimal)
-					const rewardOf= await this.stakingRewardOf(stakingContract.address, network,contractAddress,userAddress,contractAddress, decimal)
-					stakes.push({stakingType,totalStake,stakeOf,rewardOf,address: stakingContract.address})
-				}
+		const staking_contract = staking ? stakingConfigured[network].find(item => item.address == staking) : false
+		if(staking_contract) {
+			const stakingType = await this.stakingConfigured(staking_contract.address || '',network,contractAddress)
+			if(Number(stakingType[0]||'0') > 0 && staking_contract.address){
+				const totalStake = await this.stakingTotal(staking_contract.address, network,contractAddress, decimal)
+				const stakeOf = await this.stakingOf(staking_contract.address, network,contractAddress,userAddress, decimal)
+				const rewardOf= await this.stakingRewardOf(staking_contract.address, network,contractAddress,userAddress,contractAddress, decimal)
+				stakes.push({stakingType,totalStake,stakeOf,rewardOf,address: staking_contract.address})
 			}
-			
 		}
+		
+		// if(stakingConfigured[network]){
+		// 	for(let stakingContract of stakingConfigured[network]){
+		// 		const stakingType = await this.stakingConfigured(stakingContract.address || '',network,contractAddress)
+		// 		if(Number(stakingType[0]||'0') > 0 && stakingContract.address){
+		// 			const totalStake = await this.stakingTotal(stakingContract.address, network,contractAddress, decimal)
+		// 			const stakeOf = await this.stakingOf(stakingContract.address, network,contractAddress,userAddress, decimal)
+		// 			const rewardOf= await this.stakingRewardOf(stakingContract.address, network,contractAddress,userAddress,contractAddress, decimal)
+		// 			stakes.push({stakingType,totalStake,stakeOf,rewardOf,address: stakingContract.address})
+		// 		}
+		// 	}
+			
+		// }
 
 		const userInfo = {
 			currency: crucible,
@@ -72,7 +85,41 @@ export class CrucibleService {
         return userInfo
 	}
 
-    async getCrucibleInfo(crucible: string, userAddress: string) {
+	async getContractAllocation(userAddress: string, contractAddress: string, currency: string): Promise<UserContractAllocation> {
+		ValidationUtils.isTrue(!!userAddress, '"userAddress" must be provided');
+		ValidationUtils.isTrue(
+		  !!contractAddress,
+		  '"contractAddress" must be provided'
+		);
+		console.log('currency')
+		ValidationUtils.isTrue(!!currency, '"currency" must be provided');
+		const allocation = await this.allocation(
+		  userAddress,
+		  contractAddress,
+		  currency
+		);
+		console.log(allocation)
+		return allocation
+	}
+
+	 approveAllocationGetTransaction(userAddress: string, contractAddress: string, currency: string, amount: string): Promise<any> {
+		ValidationUtils.isTrue(!!userAddress, '"userAddress" must be provided');
+		ValidationUtils.isTrue(
+		  !!contractAddress,
+		  '"contractAddress" must be provided'
+		);
+		ValidationUtils.isTrue(!!currency, '"currency" must be provided');
+		ValidationUtils.isTrue(!!amount, '"amount" must be provided');
+		return this.approveGetTransaction(
+		  userAddress,
+		  contractAddress,
+		  currency,
+		  amount
+		);
+	  }
+	
+
+    async getCrucibleInfo(crucible: string, userAddress: string, staking?: string) {
 		const [network, contractAddress] = ContractHelper.parseCurrency(crucible);
 		const crucibleInfo = await this.crucibleFromNetwork(crucible);
         const currency = await this.baseCurrency(crucible);
@@ -94,16 +141,14 @@ export class CrucibleService {
 		const openCapInt = (await r.openCaps(contractAddress)).toString();
 		const stakingConfigured = STAKING_CONTRACTS_V_0_1
 		const stakes = []
-		if(stakingConfigured[network]){
-			for(let stakingContract of stakingConfigured[network]){
-                if (stakingContract.address) {
-                    const stakingType = await this.stakingConfigured(stakingContract.address,network,contractAddress)
-                    if(Number(stakingType[0]||'0') > 0){
-                        const totalStake = await this.stakingTotal(stakingContract.address,network,contractAddress, decimal)
-                        const totalPoolReward =  await this.totalPoolReward(stakingContract.address,network,contractAddress,contractAddress, decimal)
-                        stakes.push({...stakingContract,totalStake,stakingType,totalPoolReward})
-                    }
-                }
+		const staking_contract = staking ? stakingConfigured[network].find(item => item.address == staking) : false
+		if(staking_contract) {
+			const stakingType = await this.stakingConfigured(staking_contract.address || '',network,contractAddress)
+			if(Number(stakingType[0]||'0') > 0 && staking_contract.address){
+				const totalStake = await this.stakingTotal(staking_contract.address, network,contractAddress, decimal)
+				const stakeOf = await this.stakingOf(staking_contract.address, network,contractAddress,userAddress, decimal)
+				const rewardOf= await this.stakingRewardOf(staking_contract.address, network,contractAddress,userAddress,contractAddress, decimal)
+				stakes.push({stakingType,totalStake,stakeOf,rewardOf,address: staking_contract.address})
 			}
 		}
 
@@ -157,13 +202,11 @@ export class CrucibleService {
 		from: string,
 	): Promise<CustomTransactionCallRequest> {
 		const [network, contractAddress] = parseCurrency(crucible);
-		const currency = await this.baseCurrency(crucible);
         const factory = await this.router(network);
-        const decimal = await this.decimals(currency)
 		const t = await factory.populateTransaction.depositOpen(
 			from,
 			contractAddress,
-			await ContractHelper.amountToMachine(amount, decimal),
+			await ContractHelper.amountToMachine(amount, 18),
 			{from});
 		return fromTypechainTransaction(t);
 	}
@@ -175,10 +218,8 @@ export class CrucibleService {
 		from: string,
 	): Promise<CustomTransactionCallRequest> {
 		const [network, contractAddress] = parseCurrency(crucible);
-		const currency = await this.baseCurrency(crucible);
-		const r = await this.router(network);
         const factory = await this.router(network);
-        const decimal = await this.decimals(currency)
+        const decimal = 18
 		const t = await factory.populateTransaction.depositAndStake(
 			from,
 			contractAddress,
@@ -201,9 +242,8 @@ export class CrucibleService {
 	) {
         try {
             const [network, contractAddress] = parseCurrency(crucible);
-            const currency = await this.baseCurrency(crucible);
             const factory = await this.router(network);
-            const decimal = await this.decimals(currency)
+            const decimal = 18
             const t = await factory.populateTransaction.stakeFor(
                 from,
                 contractAddress,
@@ -225,14 +265,15 @@ export class CrucibleService {
         from: string
 	): Promise<CustomTransactionCallRequest> {
 		const [network, contractAddress] = parseCurrency(crucible);
-		const currency = await this.baseCurrency(crucible);
 		const r = await this.router(network);
-        const factory = await this.staking(network, stake);
-        const decimal = await this.decimals(currency)
+        const factory = await this.staking(stake, network);
+        const decimal = 18
+		console.log(decimal, 'decimal')
 		const t = await factory.populateTransaction.withdraw(
 			from,
-            crucible,
-			await ContractHelper.amountToMachine(amount, decimal)
+            contractAddress,
+			await ContractHelper.amountToMachine(amount, decimal),
+			{ from: from }
         );
 		return fromTypechainTransaction(t);
 	}
@@ -243,8 +284,7 @@ export class CrucibleService {
         to: string
 	): Promise<CustomTransactionCallRequest> {
         const factory = await this.crucible(crucible);
-        const currency = await this.baseCurrency(crucible);
-        const decimal = await this.decimals(currency)
+        const decimal = 18
 		const t = await factory.populateTransaction.withdraw(
 			to,
             await ContractHelper.amountToMachine(amount, decimal),
@@ -272,9 +312,7 @@ export class CrucibleService {
     private async crucibleFromNetwork(crucible: string) {
 		const [network, ] = ContractHelper.parseCurrency(crucible);
 		const baseCurrency = await this.baseCurrency(crucible);
-        console.log(baseCurrency)
 		const name = (await (await this.crucible(crucible)).name()).toString();
-        console.log(name, 'namename')
 
 		return {
 			currency: crucible,
@@ -310,9 +348,14 @@ export class CrucibleService {
 		const [network, address] = ContractHelper.parseCurrency(crucible);
         const currentProvider = this.web3(network).currentProvider
 		const provider = await ethersProvider(currentProvider);
-        console.log(provider, network, address)
 		return CrucibleToken__factory.connect(address, provider);
 	}
+
+	async erc20(network: string, token: string) {
+        const currentProvider = this.web3(network).currentProvider
+		const provider = await ethersProvider(currentProvider);
+		return CrucibleToken__factory.connect(token, provider);
+    }
 
     async staking(stakingContract: string, network: string): Promise<StakeOpen> {
         const currentProvider = this.web3(network).currentProvider
@@ -399,6 +442,164 @@ export class CrucibleService {
 		return ContractHelper.amountToHuman(`${network}:${crucible}`,stakeValue.toString(), decimal)
 	}
 
+	public async currentAllowance(currency: string, from: string, approvee: string) {
+        const [network, token] = ContractHelper.parseCurrency(currency);
+		console.log(network, token)
+        const allowance = await (await this.erc20(network, token)).allowance(from, approvee);
+		console.log(allowance)
+        const bAllownace = new Big(allowance.toString());
+		console.log(bAllownace, 'bAllownacebAllownacebAllownace')
+        console.log('current allowance is ', bAllownace.toString(), ' for ', approvee, 'from', from);
+        return bAllownace;
+    }
+
+	async allocation(userAddress: string, contractAddress: string, currency: string) {
+		console.log('hellloooo')
+		const allocation = await this.currentAllowance(currency, userAddress, contractAddress);
+		const [network, _] = ContractHelper.parseCurrency(currency)
+		const decimal = await this.decimals(currency)
+		console.log(allocation, network, decimal)
+		return {
+			allocation: await ContractHelper.amountToHuman(currency, allocation.toFixed(), decimal),
+			contractAddress,
+			userAddress,
+			currency,
+			expirySeconds: 0,
+			method: '',
+			network,
+		};
+	}
+
+	async approveGetTransaction(userAddress: string,
+		contractAddress: string,
+		currency: string,
+		amount: string):
+	Promise<CustomTransactionCallRequest[]> {
+		console.log('ABOUT TO APPROVE ', {currency, userAddress, amount, contractAddress})
+		const [nonce, tx] = !amount ? await this.approveMaxRequests(
+			currency, userAddress,
+			amount, contractAddress, 'the given contract')
+		: await this.approveRequests(
+			currency, userAddress,
+			amount, contractAddress, 'the given contract')
+
+		return tx;
+	}
+
+
+    public async approveMaxRequests(
+        currency: string,
+        approver: string,
+        value: string,
+        approvee: string,
+        approveeName: string,
+        nonce?: number,
+        ): Promise<[number, CustomTransactionCallRequest[]]> {
+        return this._approveRequests(currency, approver, value, approvee, approveeName, true, nonce);
+    }
+
+    public async approveRequests(
+        currency: string,
+        approver: string,
+        value: string,
+        approvee: string,
+        approveeName: string,
+        nonce?: number,
+        ): Promise<[number, CustomTransactionCallRequest[]]> {
+        return this._approveRequests(currency, approver, value, approvee, approveeName, false, nonce);
+    }
+
+    private async _approveRequests(
+        currency: string,
+        approver: string,
+        value: string,
+        approvee: string,
+        approveeName: string,
+        maxAmount: boolean,
+        nonce?: number,
+        ): Promise<[number, CustomTransactionCallRequest[]]> {
+        ValidationUtils.isTrue(!!approver, "'approver' must be provided");
+        ValidationUtils.isTrue(!!approvee, "'approvee' must be provided");
+        ValidationUtils.isTrue(!!approveeName, "'approveeName' must be provided");
+        ValidationUtils.isTrue(!!currency, "'currency' must be provided");
+        ValidationUtils.isTrue(!!value, "'value' must be provided");
+        const [network, token] = ContractHelper.parseCurrency(currency);
+        const tokDecimalFactor = 10 ** await this.decimals(currency);
+        const amount = new Big(value).times(new Big(tokDecimalFactor));
+        nonce = nonce || await this.web3(network).getTransactionCount(approver, 'pending');
+        const amountHuman = amount.div(tokDecimalFactor).toString();
+        const symbol = await this.symbol(currency);
+        let requests: CustomTransactionCallRequest[] = [];
+        return await this.addApprovesToRequests(requests, nonce!,
+            amount, amountHuman, token, symbol, currency, approver, approvee,
+            approveeName, maxAmount);
+    }
+
+
+	private async addApprovesToRequests(requests: CustomTransactionCallRequest[],
+		nonce: number,
+		amount: any,
+		amountHuman: string,
+		token: string,
+		symbol: string,
+		currency: string,
+		address: string,
+		approvee: string,
+		approveeName: string,
+		useMax: boolean,
+		): Promise<[number, CustomTransactionCallRequest[]]> {
+	const currentAllowance = await this.currentAllowance(currency, address, approvee);
+		if (currentAllowance.lt(amount)) {
+			let approveGasOverwite: number = 0;
+			if (currentAllowance.gt(new Big(0))) {
+				const approveToZero = await this.approveToZero(currency, address,
+					approvee);
+				requests.push(
+					ContractHelper.callRequest(token, currency, address, approveToZero,
+						'', nonce,
+						`Zero out the approval for ${symbol} by ${approveeName}`,),
+						);
+				nonce++;
+			}
+			const [approve, approveGas] = useMax ? await this.approveMax(currency, address,
+					approvee, approveGasOverwite) :
+				await this.approve(currency, address,
+					amount, approvee, approveGasOverwite);
+			requests.push(
+				ContractHelper.callRequest(token, currency, address, approve, approveGas.toString(), nonce,
+					`Approve ${useMax ? 'max' : amountHuman} ${symbol} to be spent by ${approveeName}`,)
+			);
+			nonce++;
+		}
+		return [nonce, requests];
+	}
+
+	public async approveToZero(currency: string, from: string, approvee: string): Promise<any> {
+        const [network, token] = ContractHelper.parseCurrency(currency);
+        const m = (await this.erc20(network, token)).approve(approvee, '0');
+        return m
+    }
+
+	public async approve(currency: string,
+		from: string,
+		rawAmount: any,
+		approvee: string,
+		useThisGas: number): Promise<any> {
+		const [network, token] = ContractHelper.parseCurrency(currency);
+		console.log('about to approve: ', { from, token, approvee, amount: rawAmount.toFixed(), })
+		const m = (await this.erc20(network, token)).approve(approvee, rawAmount.toFixed());
+		return m;
+	}
+
+	public async approveMax(currency: string,
+			from: string,
+			approvee: string,
+			useThisGas: number): Promise<any> {
+		const [network, token] = ContractHelper.parseCurrency(currency);
+		console.log('about to approve max: ', { from, token, approvee})
+		const m = (await this.erc20(network, token)).approve(approvee, MAX_AMOUNT);
+		return m
+	}
 
     public async sendTransactionAsync(
         payload: any[],

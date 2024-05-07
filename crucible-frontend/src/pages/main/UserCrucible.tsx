@@ -16,17 +16,17 @@ import { CrucibleClient } from '../../common/CrucibleClient';
 import { addAction,CommonActions } from '../../common/CommonActions';
 
 export const loadCrucible = createAsyncThunk('crucible/load',
-	async (payload: { crucibleCurrency: string }, ctx) => {
+	async (payload: { crucibleCurrency: string, staking: string }, ctx) => {
         ctx.dispatch(addAction(CommonActions.WAITING, {}));
 		const client = inject<CrucibleClient>(CrucibleClient);
-		await client.getCrucible(ctx.dispatch, payload.crucibleCurrency);
+		await client.getCrucible(ctx.dispatch, payload.crucibleCurrency, payload.staking);
 });
 
 export const loadCrucibleUserInfo = createAsyncThunk('crucible/loadUserInfo',
-	async (payload: { crucibleCurrency: string }, ctx) => {
+	async (payload: { crucibleCurrency: string, staking: string }, ctx) => {
         ctx.dispatch(addAction(CommonActions.WAITING, {}));
 		const client = inject<CrucibleClient>(CrucibleClient);
-		await client.getUserCrucibleInfo(ctx.dispatch, payload.crucibleCurrency);
+		await client.getUserCrucibleInfo(ctx.dispatch, payload.crucibleCurrency, payload.staking);
 });
 
 export const loadCruciblePriceInfo = createAsyncThunk('crucible/loadCruciblePriceInfo',
@@ -42,6 +42,9 @@ export const loadCruciblePriceInfo = createAsyncThunk('crucible/loadCruciblePric
 
 export function UserCrucible (props: {url:string})  {
     let {network, contractAddress} = useParams() as any;
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+
     const crucibleCurrency = `${network.toUpperCase()}:${(contractAddress || '').toLowerCase()}`;
     const initialized = useSelector<CrucibleAppState, boolean>(state => state.data.init.initialized);
     const userAddress = useSelector<CrucibleAppState, string|undefined>( state => addressForUser(state.connection.account.user)?.address);
@@ -50,15 +53,15 @@ export function UserCrucible (props: {url:string})  {
     
     useEffect(() => {
         if (initialized && !!network && !!contractAddress) {
-            dispatch(loadCrucible({crucibleCurrency}));
+            dispatch(loadCrucible({crucibleCurrency, "staking": params.get('staking') || ''}));
         }
         if (initialized && !!contractAddress && !!network && !!userAddress) {
-            dispatch(loadCrucibleUserInfo({crucibleCurrency}));
+            dispatch(loadCrucibleUserInfo({crucibleCurrency, "staking": params.get('staking') || ''}));
         }
 
-        if (!!crucibleData.currency) {
-            dispatch(loadCruciblePriceInfo({crucibleData}));
-        }
+        // if (!!crucibleData.currency) {
+        //     dispatch(loadCruciblePriceInfo({crucibleData}));
+        // }
 
     },[network,contractAddress,initialized,crucibleCurrency,userAddress,crucibleData.currency])
 

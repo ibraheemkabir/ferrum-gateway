@@ -114,7 +114,7 @@ export function StakeCrucible(){
             <>
                 <FCard className='crucible-filled-card'>
                     <div className='header'>
-                        <span className="back-btn" onClick={()=> crucible && history.push(`/crucible/${crucible?.network}/${crucible?.contractAddress}`)}>
+                        <span className="back-btn" onClick={()=> crucible && history.goBack()}>
                             ←
                         </span>
                         <span className="title underline">

@@ -1,8 +1,10 @@
 import React, { useContext, useState } from 'react';
-import { ApprovableButtonWrapper, IApprovableButtonWrapperViewProps } from 'common-containers';
+import { IApprovableButtonWrapperViewProps } from 'common-containers';
 import {ThemeContext, Theme} from 'unifyre-react-helper';
 import { Button } from "react-bootstrap";
 import { FLayout, FContainer,FCard, FInputText, FButton } from "ferrum-design-system";
+import { ApprovableButtonWrapper } from './../contractSync/approvableWrapper/approvableButtonWrapper';
+
 
 function ApprovableButtonInternal(props: {disabled: boolean, text: string, onClick: () => void} & IApprovableButtonWrapperViewProps) {
 

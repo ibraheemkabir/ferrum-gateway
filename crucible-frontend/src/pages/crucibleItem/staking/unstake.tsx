@@ -1,20 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { FLayout, FContainer,FCard, FInputText, FButton,FInputCheckbox } from "ferrum-design-system";
+import { useEffect, useState } from 'react';
+import { FCard, FInputText, FButton } from "ferrum-design-system";
 import { useDispatch, useSelector } from 'react-redux';
 import { CrucibleAppState } from '../../../common/CrucibleAppState';
-import { CrucibleInfo,UserCrucibleInfo, Utils,BigUtils,inject,ChainEventBase,CrucibleAllocationMethods,CRUCIBLE_CONTRACTS_V_0_1 } from 'types';
+import { CrucibleInfo,UserCrucibleInfo, BigUtils,inject,ChainEventBase,CrucibleAllocationMethods,CRUCIBLE_CONTRACTS_V_0_1 } from 'types';
 import { useHistory, useParams } from 'react-router';
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk } from '@reduxjs/toolkit';
 import { CrucibleClient, CrucibleClientActions } from '../../../common/CrucibleClient';
-import { ApiClient } from 'common-containers';
+import { ApiClient, addressForUser } from 'common-containers';
 import {crucibleBoxSlice} from './../../crucibleLgcy/CrucibleBox';
 import { addAction, APPLICATION_NAME,CommonActions } from '../../../common/CommonActions';
 import { transactionListSlice } from 'common-containers/dist/chain/TransactionList';
-import { ConnectButtonWapper,approvalKey } from 'common-containers';
-import {
-  ValidationUtils
-} from "ferrum-plumbing";
-import {ApprovableButton} from './../../../common/ApprovableBtn';
+import { ConnectButtonWapper } from 'common-containers';
+import { ValidationUtils } from "ferrum-plumbing";
+import {ApprovableButton} from '../../../contractSync/approvableWrapper/approvableButtonWrapper';
 import {changeNetwork} from 'common-containers';
 import { CardFooter } from './../../../common/CardFooter';
 
@@ -36,8 +34,10 @@ const doUnstake = createAsyncThunk('crucibleBox/doUnstake',
         console.log('PL":', payload,)
         const client = inject<CrucibleClient>(CrucibleClient);
         const api = inject<ApiClient>(ApiClient);
+        const state = ctx.getState() as CrucibleAppState;
+        const connectedAddr = addressForUser(state.connection.account?.user);
         ValidationUtils.isTrue(!((Number(payload.balance)-Number(amount)) < 0),'Not Enough Balance Available in Crucible Token for this transaction');
-        let transactionId = await client.unstake(ctx.dispatch, crucible,currency,  amount,staking);
+        let transactionId = await client.unstake(ctx.dispatch, crucible,currency,  amount, staking, connectedAddr?.address || '');
         if (!!transactionId) {
             ctx.dispatch(crucibleBoxSlice.actions.registerTx({
                 transactionId,
@@ -69,6 +69,8 @@ export function UnStakeCrucible(){
     let {network, contractAddress,stakingId} = useParams() as any;
     const [amount, setAmount] = useState('');
     const [stake, setStake] = useState(false)
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
 	let crucible = useSelector<CrucibleAppState, CrucibleInfo|undefined>(state =>
 		state.data.state.crucible);
 	const dispatch = useDispatch();
@@ -93,7 +95,7 @@ export function UnStakeCrucible(){
             dispatch(addAction(CommonActions.ERROR_OCCURED, {message: 'There is no staking configured for this crucible' }));
         }
     },[crucible?.contractAddress])
-    
+
     return (
         <>
 		    <div className='fr-flex-container'>
@@ -145,7 +147,7 @@ export function UnStakeCrucible(){
 
                     :
                         <ApprovableButton
-                            disabled={!depositOpen||Number(amount)<=0||transactionStatus==='waiting'}
+                            disabled={Number(amount)<=0||transactionStatus==='waiting'}
                             text={`${transactionStatus==='waiting' ? 'Processing' : 'Unstake Crucible🍯'}`}
                             contractAddress={CRUCIBLE_CONTRACTS_V_0_1[crucible?.network||''].router}
                             amount={'1'}

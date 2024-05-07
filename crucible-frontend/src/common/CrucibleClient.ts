@@ -26,10 +26,10 @@ export class CrucibleClient {
 
 	__name__() { return 'CrucibleClient'; }
 
-	async getCrucible(dispatch: Dispatch<AnyAction>, crucibleCurrency: string) {
+	async getCrucible(dispatch: Dispatch<AnyAction>, crucibleCurrency: string, staking: string) {
 		try {
 			const [network, address] = Utils.parseCurrency(crucibleCurrency);
-			const crucible = await this.updateCrucible(dispatch, network, address);
+			const crucible = await this.updateCrucible(dispatch, network, address, staking);
 			dispatch(addAction(Actions.SELECT_CRUCIBLE, {crucible}));
 			return
 		} catch (e) {
@@ -39,7 +39,7 @@ export class CrucibleClient {
 			}
 			//dispatch(addAction(CommonActions.ERROR_OCCURED, {message: (e as Error).message || '' }));
 		}finally{
-
+			dispatch(addAction(CommonActions.WAITING_DONE, {}));
 		}
 	
 	}
@@ -61,7 +61,7 @@ export class CrucibleClient {
 	}
 
 	async getUserCrucibleInfo(dispatch: Dispatch<AnyAction>,
-		crucible: string) {
+		crucible: string, staking: string) {
 		try {
 			dispatch(addAction(CommonActions.WAITING, {}));
 			const instance = new CrucibleService(
@@ -73,7 +73,8 @@ export class CrucibleClient {
 			)
 			const userCrucibleInfo = await instance.getUserCrucibleInfo(
 				crucible, 
-				this.api.getAddress()
+				this.api.getAddress(),
+				staking
 			)
 			// const userCrucibleInfo = await this.api.api({
 			// 	command: 'getUserCrucibleInfo',
@@ -115,7 +116,7 @@ export class CrucibleClient {
 		}
 	}
 
-	async updateCrucible(dispatch: Dispatch<AnyAction>, network: string, contractAddress: string) {
+	async updateCrucible(dispatch: Dispatch<AnyAction>, network: string, contractAddress: string, staking?: string) {
 		const instance = new CrucibleService(
 			PROVIDERS,
 			{
@@ -123,7 +124,7 @@ export class CrucibleClient {
 				"contracts": CRUCIBLE_CONTRACTS_V_0_1
 			}
 		)
-		const crucible = await instance.getCrucible(`${network.toUpperCase()}:${contractAddress}`)
+		const crucible = await instance.getCrucible(`${network.toUpperCase()}:${contractAddress}`, staking)
 		console.log(crucible, ' here')
 		//  await this.api.api({
 		// 	command: 'getCrucible',
@@ -326,7 +327,6 @@ export class CrucibleClient {
 			// const req = await this.api.api({
 			// 	command: 'withdrawGetTransaction',
 			// 	data: {network, currency, crucible, amount}, params: [] } as JsonRpcRequest);
-			console.log(tx,'reqreqree')
 			if(!!tx){
 				dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
 				
@@ -409,24 +409,34 @@ export class CrucibleClient {
 	}
 
 	async unstake(dispatch: Dispatch<AnyAction>,
-		crucible: string, currency: string, amount: string,staking:string) {
+		crucible: string, currency: string, amount: string, staking:string, address: string) {
 		try {
-				const res =  await this.api.runServerTransaction(async () => {
-					const [network,] = Utils.parseCurrency(currency);
-					const res = await this.api.api(
-					{ command: 'unStakeGetTransaction', params: [], data: {
-						crucible:`${network}:${crucible}`,
-						staking,
-						amount,
-					}});
-					console.log('PRE RES', res)
-					return res;
-				});
-				if(!!res){
-					dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
-					return res
+				const instance = new CrucibleService(
+					PROVIDERS,
+					{
+						"stakingContracts": STAKING_CONTRACTS_V_0_1,
+						"contracts": CRUCIBLE_CONTRACTS_V_0_1
+					}
+				)
+
+				const [network,] = Utils.parseCurrency(currency);
+				const tx = await instance.UnStakeTransaction(
+					`${network}:${crucible}`,
+					amount,
+					staking,
+					address
+				)
+				console.log(tx,'reqreqree')
+				if(!!tx){
+					dispatch(TxModal.toggleModal({mode:'waiting',show: true}))
+					
+					const res = await instance.sendTransactionAsync([tx], {});
+					if(!!res){
+						dispatch(TxModal.toggleModal({mode:'submitted',show: true, txId: res}))
+						return res
+					}
 				}
-				return res
+				return tx
 		} catch (e) {			
 			console.log(e,(e as Error).message)
 			//@ts-ignore

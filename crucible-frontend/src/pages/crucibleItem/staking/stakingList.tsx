@@ -1,10 +1,9 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { CrucibleAppState } from '../../../common/CrucibleAppState';
-import { useHistory, useParams } from 'react-router';
-import { CrucibleInfo, Utils,UserCrucibleInfo,BigUtils } from 'types';
+import { useHistory } from 'react-router';
+import { CrucibleInfo, UserCrucibleInfo,BigUtils } from 'types';
 import { FCard, FButton } from "ferrum-design-system";
-import { ConnectButtonWapper } from 'common-containers';
 
 export function StakingList() {
 	let crucible = useSelector<CrucibleAppState, CrucibleInfo|undefined>(state => state.data.state.crucible);
@@ -65,21 +64,21 @@ export function StakingList() {
 												<FButton 
 													title={'Withdraw Rewards'}
 													disabled={!depositOpen || Number(crucible?.openCap) === 0 ||!connected}
-													onClick={()=> history.push(`/crucible/${crucible?.network}/${crucible?.contractAddress}/${idx}/withdraw-rewards`)}
+													onClick={()=> history.push(`/crucible/${crucible?.network}/${crucible?.contractAddress}/${idx}/withdraw-rewards?staking=${e.address}`)}
 													//onClick={()=>onMint()}
 												/>
 										}
 										<FButton 
 											title={'Stake'}
 											disabled={Number(userCrucible?.balance)<=0}
-											onClick={()=> history.push(`/crucible/${crucible?.network}/${crucible?.contractAddress}/${idx}/stake`)}
+											onClick={()=> history.push(`/crucible/${crucible?.network}/${crucible?.contractAddress}/${idx}/stake?staking=${e.address}`)}
 											//onClick={()=>onMint()}
 											
 										/>
 										<FButton 
 											title={'Unstake'}
 											disabled={!enableWithdraw||!connected||Number(userCrucible?.balance)<=0}
-											onClick={()=> history.push(`/crucible/${crucible?.network}/${crucible?.contractAddress}/${idx}/unstake`)}
+											onClick={()=> history.push(`/crucible/${crucible?.network}/${crucible?.contractAddress}/${idx}/unstake?staking=${e.address}`)}
 										/>
 									</>
 								</div>

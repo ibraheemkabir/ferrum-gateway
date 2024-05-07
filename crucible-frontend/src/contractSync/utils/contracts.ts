@@ -132,6 +132,15 @@ export const STAKING_CONTRACTS_V_0_1: NetworkedConfig<StakingContracts[]> = {
          }
 		//0xd87f304ca205fb104dc014696227742d20c8f10a
 	],
+	'ETHEREUM_ARBITRUM': [
+		{
+			"factory": '0x2E15Ad5a416BC23ad80B6A1882e885b797a78CaF',
+			"router": '0xfE31f63BCd6Dd0297649Bb384ef2C89149c16A76',
+            "openEnded":"0xB4927895cbEE88E651e0582893051b3B0f8D7DB8",
+            "timed":"0xB4927895cbEE88E651e0582893051b3B0f8D7DB8",
+            "address":"0xB4927895cbEE88E651e0582893051b3B0f8D7DB8"
+         }
+	]
 };
 
 export const PROVIDERS = {
@@ -159,6 +168,7 @@ export const PROVIDERS = {
         "VELAS_TESTNET": "https://rpc.velaverse.io",
         "ETHEREUM_ARBITRUM": "https://nd-357-728-210.p2pify.com/43b194feae1d3151549a1ccce27a7697",
         "ARBITRUM_ETHEREUM": "https://nd-357-728-210.p2pify.com/43b194feae1d3151549a1ccce27a7697",
+		"ARBITRUM": "https://nd-357-728-210.p2pify.com/43b194feae1d3151549a1ccce27a7697",
         "FERRUM_TESTNET": "http://testnet.dev.svcs.ferrumnetwork.io:8545",
         "GOERLI_TESTNET": "https://rpc.ankr.com/eth_goerli",
         "ETHEREUM_GOERLI": "https://rpc.ankr.com/eth_goerli",

@@ -1,11 +1,13 @@
 import { Container, Module } from 'ferrum-plumbing';
-import { ApiClient } from 'common-containers';
+// import { ApiClient } from 'common-containers';
 import { CrucibleClient } from './CrucibleClient';
 import { StakingClient } from '../staking/StakingClient';
+import { ApiClient } from './../contractSync/approvableWrapper/apiClient';
 
 export class CrucibleModule implements Module {
     private configured: boolean = false;
     async configAsync(c: Container): Promise<void> {
+        console.log('modulemodule')
         if (this.configured) { return; }
         try {
             c.registerSingleton(CrucibleClient, c => new CrucibleClient(c.get(ApiClient)));

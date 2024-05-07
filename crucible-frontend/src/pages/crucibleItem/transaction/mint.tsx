@@ -79,6 +79,7 @@ export function MintCrucible(){
     const [stake, setStake] = useState(false)
 	let crucible = useSelector<CrucibleAppState, CrucibleInfo|undefined>(state =>
 		state.data.state.crucible);
+    
 	const dispatch = useDispatch();
     const history = useHistory()
     let transactionStatus = useSelector<CrucibleAppState, string|undefined>(state => state.ui.transactionModal.status);
@@ -95,6 +96,7 @@ export function MintCrucible(){
     let connected = useSelector<CrucibleAppState, string|undefined>(state =>crucible?.currency ? state.connection.account.user.accountGroups[0].addresses[0]?.address : undefined);
     let netowrk = useSelector<CrucibleAppState, string|undefined>(state =>crucible?.currency ? state.connection.account.user.accountGroups[0].addresses[0]?.network : undefined);
     let [selectedStaking,setSelectedStaking] = useState('');
+    console.log(crucible, netowrk, 'cruciblecruciblecrucible')
 
     return (
         <>
@@ -190,7 +192,7 @@ export function MintCrucible(){
                     { (!connected || (netowrk!=crucible?.network)) ?
                         <ConnectButtonWapper View={(props)=>(
                             <FButton 
-                                title={(netowrk!=crucible?.network) ? 'Switch to Crucible Network' : 'Connect to Wallet'}
+                                title={(netowrk!=crucible?.network && !netowrk?.includes(crucible?.network || '')) ? 'Switch to Crucible Network' : 'Connect to Wallet'}
                                 disabled={!!connected && (netowrk==crucible?.network)}
                                 {...props}
                                 onClick={(netowrk!=crucible?.network) ? ()=>changeNetwork(crucible!.network):()=>{}}

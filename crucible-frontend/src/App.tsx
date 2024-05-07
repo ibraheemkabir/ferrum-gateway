@@ -9,15 +9,15 @@ import { dataReducer, uiReducer, userReducer } from './common/Reducer';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { CrucibleModule } from './common/CrucibleModule';
 import { Environment } from 'types';
-import { ToastProvider, useToasts } from 'react-toast-notifications';
+import { ToastProvider } from 'react-toast-notifications';
 
 const _module = new CrucibleModule();
 const store = StoreBuilder.build(
             userReducer, dataReducer, uiReducer, _module, 
             //"http://localhost:8080/",
             // "https://22phwrgczz.us-east-2.awsapprunner.com",
-            //Environment.defaultEndPoint(),
-            'https://4ikenxgwge.execute-api.us-east-2.amazonaws.com/default/kb-staging-backend',
+            // Environment.defaultEndPoint(),
+            'https://api-gateway.svcs.ferrumnetwork.io/gateway-backend-prod',
           );
 
 function App() {

@@ -96,7 +96,7 @@ const TransactionStatus = (props:{status:any}) => {
 				onClose: async () => {
 					dispatch(addAction(CommonActions.RESET_ERROR, {}))
 					await updateUserBalance(dispatch)
-					crucible && dispatch(loadCrucibleUserInfo({crucibleCurrency: `${crucible.network}:${crucible.contractAddress}`}))
+					crucible && dispatch(loadCrucibleUserInfo({crucibleCurrency: `${crucible.network}:${crucible.contractAddress}`, "staking": ''}))
 				},
 				description: props.status.status === 'success' ? 
 				`${props.status.type} Transaction Successful ${ Utils.shorten(props.status.id)}` : 
