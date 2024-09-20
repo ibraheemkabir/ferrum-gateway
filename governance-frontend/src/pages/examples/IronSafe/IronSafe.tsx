@@ -184,7 +184,7 @@ function TransferList(props: {filter: string, vetoerInfo: IronSafeVetoerInfo}) {
 
     return (
         <>
-        <div className='gv-section-title'>
+        <div className='gv-section-title m-0'>
             <h4>Transactions</h4>
         </div>
         {requests.filter(r => r.method === 'SendEthSignedMethod' || r.method === 'SendSignedMethod').map((r, i) => (

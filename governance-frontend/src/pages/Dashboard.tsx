@@ -73,26 +73,24 @@ export function Dashboard(props: DashboardProps) {
 							<FMain>
 								<ConnectBar />
 								<FContainer> 
-									<div className="landing-page">
-										<Switch>
-											<Route path="/newMethod/:network/:contractAddress/:contractId">
-												<NewMethod />
-											</Route>
-											<Route path="/method/:network/:contractAddress/:contractId/:requestId">
-												<Method />
-											</Route>
-											<Route path="/contract/:network/:contractAddress/:contractId">
-												<GovernanceContractPage />
-											</Route>
-											<Route path="/ironsafe/:network/:contractAddress/:contractId">
-												<IronSafePage />
-											</Route>
-											<Route path="/" >
-												<ContractList />
-											</Route>
-										</Switch>
-										<WaitingComponent />
-									</div>
+									<Switch>
+										<Route path="/newMethod/:network/:contractAddress/:contractId">
+											<NewMethod />
+										</Route>
+										<Route path="/method/:network/:contractAddress/:contractId/:requestId">
+											<Method />
+										</Route>
+										<Route path="/contract/:network/:contractAddress/:contractId">
+											<GovernanceContractPage />
+										</Route>
+										<Route path="/ironsafe/:network/:contractAddress/:contractId">
+											<IronSafePage />
+										</Route>
+										<Route path="/" >
+											<ContractList />
+										</Route>
+									</Switch>
+									<WaitingComponent />
 								</FContainer>
 							</FMain>
 						</FLayout>

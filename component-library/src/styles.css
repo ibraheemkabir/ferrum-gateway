@@ -45,13 +45,10 @@
 .top-container {
   display: flex;
   flex-direction: row;
-  flex: 1;
-  padding-left: 24px;
-  padding-right: 24px;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  flex: 1 1;
+  padding: 8px 24px;
   align-items: center;
-  background-color: #94969a;
+  background-color: #f6f0e6 !important;
 }
 
 .top-left {

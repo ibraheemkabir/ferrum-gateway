@@ -8,22 +8,32 @@
 
 .contract-item {
 	border-radius: 15px;
-	border-style: solid;
-	border-width: 1px;
-	padding: 14px;
-	display: flex;
-	flex-direction: column;
-	max-width: 600px;
-	margin: 0px 30px 0px 0px;
-	margin-bottom: 3%;
-	grid-auto-rows: auto;
+    border-style: solid;
+    border-width: 1px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    max-width: 600px;
+    margin: 0 0 3%;
+    grid-auto-rows: auto;
+    grid-row-gap: 5px;
     row-gap: 5px;
+
+	@media (max-width: 700px) {
+        a {
+			word-break: break-all;
+		}
+    }
 }
 
 .contract-item-sub {
 	display: flex;
 	justify-content: space-between;
-	width: 100%;
+	width: 100%;	
+
+	small {
+		word-break: break-all;
+	}
 }
 
 .method-contract {

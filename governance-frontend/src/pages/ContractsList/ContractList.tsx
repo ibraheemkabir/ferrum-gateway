@@ -21,7 +21,7 @@ export function ContractList() {
 	return (
 		<>
 			<div className='gv-section-title'>
-				<h3>{'Registered Contracts - Connected to' + network}</h3>
+				<h3>{'Registered Contracts - Connected to ' + network}</h3>
 			</div>
 			<div className="contracts">
 				{
